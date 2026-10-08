@@ -141,3 +141,60 @@ def test_o_nome_do_grupo_e_sempre_o_ultimo_termo():
     )
     assert termos[-1] == "refrigerador"
     assert len(termos) == 4
+
+
+# ---------------------------------------------------------------------------
+# Lista SEAD-GO: grupo é setor, tamanho vem na coluna Embalagem
+# ---------------------------------------------------------------------------
+
+from src.runners.etapa0_limpar_itens import com_embalagem, termo_base  # noqa: E402
+
+
+@pytest.mark.parametrize(("grupo", "descricao", "esperado"), [
+    ("LIMPEZA E HIGIENE",
+     "ÁGUA SANITÁRIA - HIPOCLORITO DE SÓDIO, TEOR DE CLORO ATIVO ENTRE 2% E 2,5%",
+     "agua sanitaria"),
+    ("LIMPEZA E HIGIENE", "SACO PARA LIXO – 100 L - PLÁSTICO REFORÇADO.", "saco lixo"),
+    ("LIMPEZA PREDIAL", "BALDE PLÁSTICO – 5 L - COM ALÇA.", "balde plastico"),
+    ("EPI / UNIFORME", "LUVA DE PVC - CANO MÉDIO OU LONGO.", "luva pvc"),
+])
+def test_grupo_setorial_usa_o_nome_do_produto(grupo, descricao, esperado):
+    """"limpeza higiene 5 l" não acha água sanitária em loja nenhuma."""
+    assert termo_base(grupo, descricao) == esperado
+
+
+def test_grupo_de_produto_continua_valendo():
+    """Na lista FNDE o grupo é o produto, e nada muda."""
+    assert termo_base("COIFA", "Coifa - compatível com fogão") == "coifa"
+
+
+def test_embalagem_entra_na_descricao_e_no_termo():
+    descricao = com_embalagem("ÁGUA SANITÁRIA - USO GERAL.", "GALÃO 5 L", 1, "GL")
+    assert descricao.endswith("EMBALAGEM: GALÃO 5 L")
+    assert gerar_termos("LIMPEZA E HIGIENE", descricao)[0] == "agua sanitaria 5 l"
+
+
+def test_pacote_da_coluna_embalagem_chega_ao_matching():
+    from src.core.matching import embalagem
+
+    descricao = com_embalagem("SACO PARA LIXO – 20 L - PLÁSTICO.", "PACOTE C/ 100", 1, "PCT")
+    assert ("un", 100) in embalagem(descricao).quantidades
+
+
+def test_milhar_da_embalagem_nao_vira_um():
+    descricao = com_embalagem("PAPEL TOALHA - X.", "FARDO C/ 1.000 FOLHAS", 1, "PCT")
+    assert "1000 FOLHAS" in descricao
+
+
+@pytest.mark.parametrize(("embalagem", "unidade", "sufixo"), [
+    (None, "KG", "EMBALAGEM: 1 KG"),
+    (None, "L", "EMBALAGEM: 1 L"),
+])
+def test_kg_e_litro_sem_embalagem_sao_o_tamanho(embalagem, unidade, sufixo):
+    assert com_embalagem("ESTOPA BRANCA - X.", embalagem, 1, unidade).endswith(sufixo)
+
+
+@pytest.mark.parametrize(("embalagem", "unidade"), [(None, "UN"), ("-", "UN"), (None, "PAR")])
+def test_sem_tamanho_a_descricao_nao_muda(embalagem, unidade):
+    assert com_embalagem("RODO PARA PIA - PLÁSTICO.", embalagem, 1, unidade) == \
+        "RODO PARA PIA - PLÁSTICO."

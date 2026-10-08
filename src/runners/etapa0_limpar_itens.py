@@ -1,21 +1,22 @@
-"""Limpa a Lista de Equipamentos FNDE para a Etapa 2.
+"""Limpa a lista de itens da pesquisa para a Etapa 2.
+
+Entrada padrão: a aba "Solicitação itens" da Pesquisa SEAD-GO de
+Limpeza Predial (Região Centro: GO e DF).
 
 Saídas:
-  data/interim/itens.csv            130 itens da coleta automática
-  data/interim/itens_manuais.csv     14 itens da coleta manual
-  data/output/itens_limpos.xlsx      as duas listas, para a equipe ler
+  data/interim/itens.csv            120 itens da coleta automática
+  data/interim/itens_manuais.csv      4 itens da coleta manual (AUXÍLIOS)
 
 Outra lista no mesmo formato passa pela mesma limpeza com --entrada e
---saida. É o caso da lista de varejo (31 itens de EQUIPAMENTO que podem
-ser comprados em loja de varejo):
+--saida. É o caso de uma lista de varejo:
 
   python -m src.runners.etapa0_limpar_itens \\
-      --entrada "data/raw/Lista de Equipamentos_Varejo_Sul xlsx.xlsx" \\
+      --entrada "data/raw/<lista de varejo>.xlsx" \\
       --saida data/interim/itens_varejo.csv
 
 --saida é obrigatório nesse caso na prática: sem ele a lista nova
-SOBRESCREVE o itens.csv principal, e a varredura perde os outros 101
-itens sem aviso nenhum.
+SOBRESCREVE o itens.csv principal, e a varredura perde os outros itens
+sem aviso nenhum.
 """
 
 from __future__ import annotations
@@ -26,22 +27,32 @@ from pathlib import Path
 import pandas as pd
 from unidecode import unidecode
 
-ENTRADA = Path("data/raw/Lista_Equipamentos_FNDE_-_SUL.xlsx")
+ENTRADA = Path("data/raw/Pesquisa_SEAD_GO_Limpeza_Predial.xlsx")
 SAIDA = Path("data/interim/itens.csv")
 
 # Categorias sem loja online com carrinho: cotação por telefone/e-mail.
-# VEICULOS não é veículo: são 2 pneus, vendidos normalmente por
-# atacadista de autopeças. Fica na coleta automática.
-CATEGORIAS_MANUAIS = ["COMBUSTÍVEL", "SAÚDE OCUPACIONAL"]
+# Na pesquisa SEAD-GO é AUXÍLIOS: passagem de ônibus (1) e exames de
+# saúde ocupacional/ASO (3). As outras duas vêm da lista FNDE da versão
+# Sul e não atrapalham uma lista que não as tem.
+CATEGORIAS_MANUAIS = ["COMBUSTÍVEL", "SAÚDE OCUPACIONAL", "AUXÍLIOS"]
+
+# Grupos de Insumo da SEAD-GO que são setor, não produto: o termo de
+# busca sai do nome no começo da descrição (termo_base). Na lista FNDE
+# o grupo é o próprio produto ("BALANÇA") e nenhum deles está aqui.
+GRUPOS_GENERICOS = {"LIMPEZA E HIGIENE", "LIMPEZA PREDIAL", "EPI / UNIFORME"}
 
 # Colunas descartadas e por quê:
 #   Prioridade        100% vazia
 #   EAN               100% vazia -> não há match por código de barras
-#   Embalagem         só contém "-"
+#   Embalagem         na lista FNDE só continha "-". Na SEAD-GO carrega o
+#                     tamanho ("GALÃO 5 L", "PACOTE C/ 100") e por isso é
+#                     dobrada na descrição antes de sair -- com_embalagem()
 #   Marca/Fabricante  o critério é aderência à descrição, não marca
-#   Código do Insumo  idêntico a ID FGV nas 144 linhas (conferido)
+#   Código do Insumo  idêntico a ID FGV na FNDE; vazio na SEAD-GO
 #   Quantidade        constante = 1 (é a premissa do frete: 1 unidade)
-#   Unidade de Medida constante = UN depois de tirar COMBUSTÍVEL (KG só no GLP)
+#   Unidade de Medida na FNDE, constante = UN. Na SEAD-GO, KG e L sem
+#                     embalagem dizem o tamanho e também entram na
+#                     descrição -- com_embalagem()
 #   Descrição_Resumida truncada à mão e CORROMPIDA: 4 linhas perderam os
 #                      primeiros caracteres (a 311 virou "UVA ANTICORTE"),
 #                      1 vazia, 19 idênticas à completa. Substituída por
@@ -183,13 +194,64 @@ def _sem_pontuacao(palavras: list[str]) -> list[str]:
     return [p.strip(",.") for p in palavras if p.strip(",.")]
 
 
+def termo_base(grupo: str, descricao: str) -> str:
+    """O nome que a loja dá ao produto. É a base de todos os termos.
+
+    Na lista FNDE o Grupo de Insumo É o produto ("BALANÇA", "PANELA").
+    Na SEAD-GO ele é um setor ("LIMPEZA E HIGIENE", "EPI / UNIFORME"), e
+    "limpeza higiene 5 l" é uma busca que não acha água sanitária em loja
+    nenhuma. Para os grupos de GRUPOS_GENERICOS, o nome é o começo da
+    descrição (a SEAD-GO escreve "NOME - DETALHES"), sem a variante
+    depois do travessão, até o primeiro número (a medida entra no termo
+    por conta própria) e com até 4 palavras:
+    "SACO PARA LIXO – 20 L - PLÁSTICO..." -> "saco lixo".
+    Qualquer outro grupo (a lista FNDE inteira) vale como sempre valeu.
+    """
+    g = " ".join(_sem_pontuacao(normalizar(grupo).split()))
+    if str(grupo or "").strip().upper() not in GRUPOS_GENERICOS:
+        return g
+    cabeca = re.split(r"\s-\s|,", str(descricao or ""))[0]
+    nome = re.split(r"\s[–—]\s", cabeca)[0]
+    palavras: list[str] = []
+    for p in _sem_pontuacao(normalizar(nome).split()):
+        if p[0].isdigit():
+            break
+        palavras.append(p)
+    return " ".join(palavras[:4]) or g
+
+
+def com_embalagem(descricao: str, embalagem, quantidade, unidade) -> str:
+    """Dobra na descrição o tamanho que a lista guarda em outra coluna.
+
+    "ÁGUA SANITÁRIA - ..." com Embalagem "GALÃO 5 L" sai como "ÁGUA
+    SANITÁRIA - ... EMBALAGEM: GALÃO 5 L". É a descrição que o matching
+    lê: sem isto um frasco de 1 L concorreria com o galão de 5 L, e um
+    saco de lixo avulso com o pacote de 100. "-" e célula vazia (a lista
+    FNDE inteira) devolvem a descrição como veio.
+
+    KG e L sem embalagem são o tamanho do próprio item ("1 KG" de estopa)
+    e entram do mesmo jeito. O milhar pt-BR perde o ponto ("1.000
+    FOLHAS" -> "1000 FOLHAS"), senão o matching lê um fardo com 1.
+    """
+    texto = str(descricao or "").strip()
+    emb = "" if pd.isna(embalagem) else str(embalagem).strip()
+    if emb in ("", "-"):
+        un = "" if pd.isna(unidade) else str(unidade).strip().upper()
+        if un not in ("KG", "L"):
+            return texto
+        qtd = "1" if pd.isna(quantidade) else _formatar(float(quantidade))
+        emb = f"{qtd} {un}"
+    emb = re.sub(r"(\d)\.(\d{3})\b", r"\1\2", emb)
+    return f"{texto} EMBALAGEM: {emb}"
+
+
 def gerar_termos(grupo: str, descricao: str) -> list[str]:
     """Do texto de licitação para 2-4 buscas que uma loja entende.
 
     Do mais específico ao mais genérico: a varredura para no primeiro
     que der match bom, então a ordem importa.
     """
-    g = " ".join(_sem_pontuacao(normalizar(grupo).split()))
+    g = termo_base(grupo, descricao)
     especificos: list[str] = []
 
     med = medidas(descricao)
@@ -202,7 +264,7 @@ def gerar_termos(grupo: str, descricao: str) -> list[str]:
         especificos.append(f"{g} {cont[0]} {cont[1]}")
 
     mat = material(descricao)
-    if mat:
+    if mat and mat not in g.split():
         especificos.append(f"{g} {mat}")
 
     # Âncora de contexto: as 3 primeiras palavras úteis da descrição.
@@ -245,6 +307,13 @@ def caminho_manuais(saida: Path) -> Path:
 
 def main(entrada: Path = ENTRADA, saida: Path = SAIDA):
     df = pd.read_excel(entrada)
+    # Lidas antes de as colunas saírem: na SEAD-GO são elas que dizem o
+    # tamanho do item (com_embalagem).
+    vazia = pd.Series([None] * len(df), index=df.index)
+    embalagem, quantidade, unidade = (
+        df[c] if c in df.columns else vazia
+        for c in ("Embalagem", "Quantidade", "Unidade de Medida")
+    )
     df = df.drop(columns=[c for c in COLUNAS_FORA if c in df.columns])
 
     df = df.rename(columns={
@@ -263,6 +332,13 @@ def main(entrada: Path = ENTRADA, saida: Path = SAIDA):
                        .str.replace(r"\\n", " ", regex=True)
                        .str.replace(r"\s+", " ", regex=True).str.strip())
     df["item_curto"] = df["descricao"].map(item_curto)
+    # Só nos itens automáticos: é para o matching, e o manual não passa
+    # por ele ("botijão de 45 kg" do GLP, unidade KG, não é "1 KG").
+    df["descricao"] = [
+        d if c in CATEGORIAS_MANUAIS else com_embalagem(d, e, q, u)
+        for c, d, e, q, u in zip(df["categoria"], df["descricao"],
+                                 embalagem, quantidade, unidade)
+    ]
     df["termos_busca"] = [
         " | ".join(gerar_termos(g, d))
         for g, d in zip(df["grupo_insumo"], df["descricao"])
@@ -297,7 +373,7 @@ def main(entrada: Path = ENTRADA, saida: Path = SAIDA):
 if __name__ == "__main__":
     import argparse
 
-    p = argparse.ArgumentParser(description="Etapa 0 — limpa uma lista de itens FNDE")
+    p = argparse.ArgumentParser(description="Etapa 0 — limpa a lista de itens da pesquisa")
     p.add_argument("--entrada", type=Path, default=ENTRADA,
                    help=f"planilha de itens (padrão: {ENTRADA})")
     p.add_argument("--saida", type=Path, default=SAIDA,
