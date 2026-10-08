@@ -153,7 +153,7 @@ def test_configuracao_sobrescreve_o_que_ja_estava(tmp_path, pasta):
     })
 
     [forn] = unificar_planilhas(
-        base_sul=tmp_path / "x.xlsx",
+        base_regional=tmp_path / "x.xlsx",
         base_atacadistas=tmp_path / "y.xlsx",
         pasta_leads=pasta,
     )
@@ -185,7 +185,7 @@ def test_master_editado_a_mao_e_normalizado_na_leitura(tmp_path):
     master = tmp_path / "master.csv"
     master.write_text(
         "dominio,nome,url_base,uf,cnpj,cnae_principal,cnaes_secundarios,"
-        "situacao_cadastral,eh_atacadista,flag_atacarejo,entrega_sul,plataforma,"
+        "situacao_cadastral,eh_atacadista,flag_atacarejo,entrega_centro,plataforma,"
         "modo_frete,status,motivo,origem,url_busca,seletor_busca\n"
         "alfa.com.br,Alfa,https://alfa.com.br,PR,,,,ATIVA,,,,desconhecida,,"
         "APROVADO,,,https://alfa.com.br/busca?q=,#busca\n"
@@ -207,7 +207,7 @@ def test_colunas_trocadas_no_master_nao_passam(tmp_path, caplog):
     master = tmp_path / "master.csv"
     master.write_text(
         "dominio,nome,url_base,uf,cnpj,cnae_principal,cnaes_secundarios,"
-        "situacao_cadastral,eh_atacadista,flag_atacarejo,entrega_sul,plataforma,"
+        "situacao_cadastral,eh_atacadista,flag_atacarejo,entrega_centro,plataforma,"
         "modo_frete,status,motivo,origem,url_busca,seletor_busca\n"
         "alfa.com.br,Alfa,https://alfa.com.br,PR,,,,ATIVA,,,,desconhecida,,"
         "APROVADO,,,,https://alfa.com.br/busca?q=x\n",

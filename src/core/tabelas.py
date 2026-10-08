@@ -28,7 +28,7 @@ FORNECEDORES = Path("data/interim/fornecedores_master.csv")
 COLUNAS_FORNECEDOR = [
     "dominio", "nome", "url_base", "uf", "cnpj", "cnae_principal",
     "cnaes_secundarios", "situacao_cadastral", "eh_atacadista",
-    "flag_atacarejo", "entrega_sul", "plataforma", "modo_frete",
+    "flag_atacarejo", "entrega_centro", "plataforma", "modo_frete",
     "status", "motivo", "origem", "url_busca", "seletor_busca",
 ]
 
@@ -52,7 +52,7 @@ def _bool_do_texto(texto: str) -> bool | None:
 
 
 def _texto_entrega(entrega: dict[str, bool]) -> str:
-    """{'PR': True, 'SC': False} -> 'PR:sim|SC:nao'"""
+    """{'GO': True, 'DF': False} -> 'GO:sim|DF:nao'"""
     return "|".join(f"{uf}:{_texto_bool(v)}" for uf, v in sorted(entrega.items()))
 
 
@@ -158,7 +158,7 @@ def ler_fornecedores(
                 situacao_cadastral=(linha.get("situacao_cadastral") or "").strip() or None,
                 eh_atacadista=_bool_do_texto(linha.get("eh_atacadista", "")),
                 flag_atacarejo=bool(_bool_do_texto(linha.get("flag_atacarejo", ""))),
-                entrega_sul=_entrega_do_texto(linha.get("entrega_sul", "")),
+                entrega_centro=_entrega_do_texto(linha.get("entrega_centro", "")),
                 plataforma=_plataforma(linha.get("plataforma")),
                 modo_frete=_modo_frete(linha.get("modo_frete")),
                 status=status,
@@ -199,7 +199,7 @@ def gravar_fornecedores(
                 "situacao_cadastral": forn.situacao_cadastral or "",
                 "eh_atacadista": _texto_bool(forn.eh_atacadista),
                 "flag_atacarejo": _texto_bool(forn.flag_atacarejo),
-                "entrega_sul": _texto_entrega(forn.entrega_sul),
+                "entrega_centro": _texto_entrega(forn.entrega_centro),
                 "plataforma": str(forn.plataforma or ""),
                 "modo_frete": str(forn.modo_frete or ""),
                 "status": str(forn.status),

@@ -21,7 +21,7 @@ from src.core.plataforma import detectar
 from src.core.busca import molde_de_busca, seletor_de_busca
 from src.core.tabelas import gravar_fornecedores, ler_fornecedores
 from src.export import validacao_por_aba
-from src.models import Fornecedor, Plataforma, Status
+from src.models import CEPS_CENTRO, Fornecedor, Plataforma, Status
 from src.validacao.classificar_cnae import decidir
 from src.validacao.consultar_cnpj import consultar, normalizar
 from src.validacao.extrair_cnpj import extrair_do_site
@@ -33,10 +33,12 @@ SAIDA = Path("data/interim/fornecedores_master.csv")
 # master (a chave primária é o domínio), mas não pode se perder.
 SEM_SITE = Path("data/interim/sem_site.csv")
 
-BASE_SUL = Path("data/raw/base_fornecedores_regiao_sul.xlsx")
-BASE_ATACADISTAS = Path(
-    "data/raw/fornecedores_atacadistas_utensilios_sul_consolidado_1.xlsx"
-)
+# As duas bases consolidadas no layout herdado da versão Sul. São
+# OPCIONAIS: a Região Centro começou sem elas, e a entrada normal é a
+# pasta de leads. Quem tiver uma base nesse layout para o Centro larga
+# com estes nomes; a coluna de entrega passa a ser "Entrega GO+DF".
+BASE_REGIONAL = Path("data/raw/base_fornecedores_regiao_centro.xlsx")
+BASE_ATACADISTAS = Path("data/raw/fornecedores_atacadistas_centro.xlsx")
 
 # Onde a prospecção larga o que achar. Qualquer .csv ou .xlsx, quantos
 # arquivos quiser, com as colunas no nome que a pessoa preferir.
@@ -70,7 +72,12 @@ MAPA_STATUS_LEGADO = {
     "PENDENTE": Status.PENDENTE,
 }
 
-UFS_SUL = ("PR", "SC", "RS")
+# UFs onde a entrega é exigida. Saem dos CEPs de referência para que as
+# duas listas nunca discordem.
+UFS_CENTRO = tuple(CEPS_CENTRO)
+# Na base atacadista legada, a coluna que diz se o fornecedor entrega em
+# todas as UFs da pesquisa. Na versão Sul era "Entrega PR+SC+RS".
+COLUNA_ENTREGA_LEGADA = "Entrega " + "+".join(UFS_CENTRO)
 
 UFS_BR = frozenset((
     "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
@@ -336,14 +343,16 @@ def ler_leads(pasta: Path = LEADS) -> list[Fornecedor]:
 
 
 def unificar_planilhas(
-    base_sul: Path = BASE_SUL,
+    base_regional: Path = BASE_REGIONAL,
     base_atacadistas: Path = BASE_ATACADISTAS,
     pasta_leads: Path = LEADS,
 ) -> list[Fornecedor]:
-    """Junta as duas bases pelo domínio normalizado.
+    """Junta as duas bases (se existirem) e os leads pelo domínio normalizado.
 
-    base_fornecedores_regiao_sul.xlsx     -> 102 empresas, SEM CNPJ
-    fornecedores_atacadistas_...xlsx      -> 114 empresas, com CNPJ e CNAE
+    base_fornecedores_regiao_centro.xlsx  -> base regional, SEM CNPJ
+    fornecedores_atacadistas_centro.xlsx  -> base com CNPJ e CNAE
+
+    As duas são opcionais e seguem o layout herdado da versão Sul.
 
     A segunda ganha nos campos que ela resolveu (CNPJ, CNAE, status
     decidido por gente). A primeira entra como lead: domínio, nome, UF e
@@ -358,8 +367,8 @@ def unificar_planilhas(
     por_dominio: dict[str, Fornecedor] = {}
 
     # --- leads da base regional (sem CNPJ) ---------------------------------
-    if base_sul.exists():
-        df = pd.read_excel(base_sul, sheet_name="Base de Empresas")
+    if base_regional.exists():
+        df = pd.read_excel(base_regional, sheet_name="Base de Empresas")
         for _, linha in df.iterrows():
             url = _texto(linha.get("Link (clicável)")) or _texto(linha.get("Site Oficial"))
             dominio = normalizar_dominio(url)
@@ -372,10 +381,10 @@ def unificar_planilhas(
                 uf=_texto(linha.get("Estado")).upper(),
                 status=Status.PENDENTE,
                 motivo="lead da base regional; falta CNPJ",
-                origem=[nome_origem(base_sul)],
+                origem=[nome_origem(base_regional)],
             )
     else:
-        log.warning("%s nao encontrada", base_sul)
+        log.info("%s nao encontrada (opcional)", base_regional)
 
     # --- base atacadista (com CNPJ e CNAE) ---------------------------------
     sem_site: list[dict] = []
@@ -400,7 +409,7 @@ def unificar_planilhas(
                 continue
 
             legado = _texto(linha.get("Status atual"))
-            entrega = _sim(linha.get("Entrega PR+SC+RS"))
+            entrega = _sim(linha.get(COLUNA_ENTREGA_LEGADA))
             existente = por_dominio.get(dominio)
 
             forn = Fornecedor(
@@ -410,7 +419,7 @@ def unificar_planilhas(
                 uf=_texto(linha.get("UF")).upper() or (existente.uf if existente else ""),
                 cnpj=_digitos(_texto(linha.get("CNPJ"))) or None,
                 cnae_principal=_digitos(_texto(linha.get("CNAE principal"))) or None,
-                entrega_sul={uf: True for uf in UFS_SUL} if entrega else {},
+                entrega_centro={uf: True for uf in UFS_CENTRO} if entrega else {},
                 status=_status_legado(legado),
                 motivo=" | ".join(
                     p for p in (legado, _texto(linha.get("Motivo / observação"))) if p
@@ -420,7 +429,7 @@ def unificar_planilhas(
             )
             por_dominio[dominio] = forn
     else:
-        log.warning("%s nao encontrada", base_atacadistas)
+        log.info("%s nao encontrada (opcional)", base_atacadistas)
 
     if sem_site:
         _gravar_sem_site(sem_site)
@@ -639,39 +648,38 @@ def validar(fornecedor: Fornecedor, cliente: Cliente,
 
 
 def decidir_entrega(fornecedor: Fornecedor) -> Fornecedor:
-    """Entrega no Sul é critério de aprovação, não anotação.
+    """Entrega na Região Centro (GO e DF) é critério de aprovação, não anotação.
 
-    Passou a ser o filtro que de fato importa. Enquanto só entravam
-    lojas do Sul e de SP, a geografia fazia esse trabalho de graça;
-    abrindo para o país inteiro, o que separa um atacadista útil de um
-    inútil é exatamente se ele coloca a caixa em Curitiba.
+    É o filtro que de fato importa. Fornecedor de qualquer estado entra,
+    e o que separa um atacadista útil de um inútil é exatamente se ele
+    coloca a caixa em Goiânia ou em Brasília.
 
-    Reprova só com prova: é preciso ter havido recusa nas três UFs.
+    Reprova só com prova: é preciso ter havido recusa em todas as UFs.
     Timeout, bloqueio e site fora do ar deixam a pergunta em aberto, e
     fornecedor não some da lista por causa de uma tarde ruim de rede.
     """
-    respostas = fornecedor.entrega_sul
+    respostas = fornecedor.entrega_centro
 
     if any(respostas.values()):
         atendidas = sorted(uf for uf, atende in respostas.items() if atende)
         fornecedor.motivo = f"{fornecedor.motivo} | entrega em {', '.join(atendidas)}".strip(" |")
         return fornecedor
 
-    if len(respostas) == len(UFS_SUL):  # as três responderam, e todas recusaram
+    if len(respostas) == len(UFS_CENTRO):  # todas responderam, e todas recusaram
         fornecedor.status = Status.REPROVADO
-        fornecedor.motivo = "não entrega em PR, SC nem RS"
+        fornecedor.motivo = f"não entrega em {' nem '.join(UFS_CENTRO)}"
         return fornecedor
 
     fornecedor.status = Status.PENDENTE
-    faltam = [uf for uf in UFS_SUL if uf not in respostas]
+    faltam = [uf for uf in UFS_CENTRO if uf not in respostas]
     fornecedor.motivo = (
-        f"entrega no Sul não confirmada (sem resposta para {', '.join(faltam)})"
+        f"entrega na Região Centro não confirmada (sem resposta para {', '.join(faltam)})"
     )
     return fornecedor
 
 
 def testar_entrega(fornecedor: Fornecedor, cliente: Cliente) -> Fornecedor:
-    """Confirma entrega em PR, SC e RS e classifica o modo de frete.
+    """Confirma entrega em GO e DF e classifica o modo de frete.
 
     É o passo mais lento da etapa, por isso vem por último, rodando só
     sobre quem já passou no filtro de CNAE. Precisa de um produto de
@@ -689,7 +697,7 @@ def testar_entrega(fornecedor: Fornecedor, cliente: Cliente) -> Fornecedor:
             if not exemplos:
                 fornecedor.motivo += " | sem produto de exemplo para testar frete"
                 return fornecedor
-            fornecedor.modo_frete, fornecedor.entrega_sul = classificar_site(
+            fornecedor.modo_frete, fornecedor.entrega_centro = classificar_site(
                 fornecedor, executor, exemplos[0].url
             )
     except (ErroHTTP, NotImplementedError) as e:
@@ -778,7 +786,7 @@ def main(com_frete: bool = False, retomar: bool = True,
                 f.situacao_cadastral = antigo.situacao_cadastral
                 f.plataforma = antigo.plataforma
                 f.modo_frete = antigo.modo_frete or f.modo_frete
-                f.entrega_sul = antigo.entrega_sul or f.entrega_sul
+                f.entrega_centro = antigo.entrega_centro or f.entrega_centro
 
     with Cliente() as cliente:
         for f in fornecedores:
@@ -815,7 +823,7 @@ def main(com_frete: bool = False, retomar: bool = True,
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="Etapa 1 — validação de fornecedores")
     p.add_argument("--com-frete", action="store_true",
-                   help="também testa entrega nos 3 CEPs (lento)")
+                   help="também testa entrega nos CEPs de GO e DF (lento)")
     p.add_argument("--do-zero", action="store_true",
                    help="ignora o master anterior e reconsulta todos os CNPJ; "
                         "com --so-busca, zera a configuração antes de reler")

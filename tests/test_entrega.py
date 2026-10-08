@@ -1,13 +1,12 @@
-"""Entrega no Sul como critério — o filtro que substituiu a geografia.
+"""Entrega na Região Centro (GO e DF) como critério — o filtro que substituiu a geografia.
 
-Enquanto só entravam lojas do Sul e de SP, a geografia fazia esse
-trabalho de graça. Abrindo a lista para o país inteiro, o que separa um
-atacadista útil de um inútil é se ele coloca a caixa em Curitiba, e isso
-passou a ser verificado de verdade em dois lugares: na aprovação do
-fornecedor e na hora de deixar a linha entrar na planilha.
+A UF da sede não diz nada: o que separa um atacadista útil de um inútil
+é se ele coloca a caixa em Goiânia ou em Brasília, e isso é verificado
+de verdade em dois lugares: na aprovação do fornecedor e na hora de
+deixar a linha entrar na planilha.
 
 A regra que amarra os dois: recusa reprova, silêncio não. Um site fora
-do ar não pode virar "não entrega no Sul".
+do ar não pode virar "não entrega na região".
 """
 
 from __future__ import annotations
@@ -16,8 +15,8 @@ import pytest
 
 from src.core.frete import SEM_ENTREGA, houve_recusa
 from src.export.montar_entrega import problema
-from src.models import Fornecedor, Status
-from src.runners.etapa1_validar import decidir_entrega
+from src.models import CEPS_CENTRO, Fornecedor, Status
+from src.runners.etapa1_validar import UFS_CENTRO, decidir_entrega
 
 
 def fornecedor(uf: str = "AM", **extra) -> Fornecedor:
@@ -33,19 +32,30 @@ def fornecedor(uf: str = "AM", **extra) -> Fornecedor:
 
 
 # ---------------------------------------------------------------------------
+# As UFs da pesquisa
+# ---------------------------------------------------------------------------
+
+def test_a_pesquisa_cobre_go_e_df():
+    """Região Centro desta pesquisa: Goiás e Distrito Federal."""
+    assert set(CEPS_CENTRO) == {"GO", "DF"}
+    assert UFS_CENTRO == tuple(CEPS_CENTRO)
+    assert all(len(cep) == 8 and cep.isdigit() for cep in CEPS_CENTRO.values())
+
+
+# ---------------------------------------------------------------------------
 # A UF da sede não é critério
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("uf", ["AM", "BA", "SP", "PR", "GO", ""])
-def test_fornecedor_de_qualquer_uf_entra_se_entrega_no_sul(uf):
-    forn = decidir_entrega(fornecedor(uf, entrega_sul={"PR": True, "SC": True, "RS": True}))
+@pytest.mark.parametrize("uf", ["AM", "BA", "SP", "PR", "GO", "DF", ""])
+def test_fornecedor_de_qualquer_uf_entra_se_entrega_na_regiao(uf):
+    forn = decidir_entrega(fornecedor(uf, entrega_centro={"GO": True, "DF": True}))
     assert forn.status is Status.APROVADO
 
 
-def test_fornecedor_do_sul_sai_se_nao_entrega_no_sul():
-    """A recíproca: estar no Sul não basta, e nunca bastou."""
+def test_fornecedor_de_go_sai_se_nao_entrega_na_regiao():
+    """A recíproca: ter sede em GO não basta, e nunca bastou."""
     forn = decidir_entrega(
-        fornecedor("PR", entrega_sul={"PR": False, "SC": False, "RS": False})
+        fornecedor("GO", entrega_centro={"GO": False, "DF": False})
     )
     assert forn.status is Status.REPROVADO
 
@@ -54,36 +64,36 @@ def test_fornecedor_do_sul_sai_se_nao_entrega_no_sul():
 # Recusa reprova, silêncio não
 # ---------------------------------------------------------------------------
 
-def test_recusa_nas_tres_ufs_reprova():
+def test_recusa_em_todas_as_ufs_reprova():
     forn = decidir_entrega(
-        fornecedor(entrega_sul={"PR": False, "SC": False, "RS": False})
+        fornecedor(entrega_centro={"GO": False, "DF": False})
     )
     assert forn.status is Status.REPROVADO
-    assert forn.motivo == "não entrega em PR, SC nem RS"
+    assert forn.motivo == "não entrega em GO nem DF"
 
 
 def test_atender_uma_uf_basta_para_seguir():
-    """Cada linha da entrega é item x fornecedor x UF: quem atende só o
-    PR ainda rende as linhas do PR."""
+    """Cada linha da entrega é item x fornecedor x UF: quem atende só
+    GO ainda rende as linhas de GO."""
     forn = decidir_entrega(
-        fornecedor(entrega_sul={"PR": True, "SC": False, "RS": False})
+        fornecedor(entrega_centro={"GO": True, "DF": False})
     )
     assert forn.status is Status.APROVADO
-    assert "entrega em PR" in forn.motivo
+    assert "entrega em GO" in forn.motivo
 
 
 def test_sem_resposta_nenhuma_fica_pendente_e_nao_reprovado():
     """Site fora do ar não pode sumir da lista."""
-    forn = decidir_entrega(fornecedor(entrega_sul={}))
+    forn = decidir_entrega(fornecedor(entrega_centro={}))
     assert forn.status is Status.PENDENTE
     assert "não confirmada" in forn.motivo
 
 
 def test_resposta_parcial_fica_pendente():
-    """Duas recusas e um timeout ainda não são prova de que não entrega."""
-    forn = decidir_entrega(fornecedor(entrega_sul={"PR": False, "SC": False}))
+    """Uma recusa e um timeout ainda não são prova de que não entrega."""
+    forn = decidir_entrega(fornecedor(entrega_centro={"GO": False}))
     assert forn.status is Status.PENDENTE
-    assert "RS" in forn.motivo
+    assert "DF" in forn.motivo
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +119,7 @@ def registro(tmp_path):
     png = tmp_path / "p.png"
     png.write_bytes(b"png falso")
     return {
-        "id_item": "294", "dominio": "exemplo.com.br", "uf": "PR",
+        "id_item": "1000", "dominio": "exemplo.com.br", "uf": "GO",
         "preco_produto": 24.9, "preco_final": 24.9,
         "valor_frete": None, "obs_frete": "",
         "caminho_print": str(png), "score_match": 0.92,

@@ -70,7 +70,7 @@ def problema(candidato: dict) -> str:
         # Frete sob consulta é resultado legítimo e entra com observação.
         # "Não entrega neste CEP" não é: é o fornecedor dizendo que a
         # linha não existe. Passou a ser o descarte mais comum desde que
-        # a lista deixou de se limitar ao Sul e a SP.
+        # a lista deixou de se limitar à região da pesquisa e a SP.
         if houve_recusa(obs_frete):
             return "fornecedor não entrega nesta UF"
 

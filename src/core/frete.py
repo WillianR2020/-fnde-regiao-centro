@@ -1,7 +1,7 @@
 """Classificação e cotação de frete. A parte mais trabalhosa do projeto.
 
 Frete não é um valor, é um comportamento: o mesmo site pode entregar nos
-três estados com preços diferentes, ter frete grátis nacional, ou grátis
+estados da pesquisa com preços diferentes, ter frete grátis nacional, ou grátis
 acima de um valor que uma unidade nunca alcança.
 
 Daí a separação em dois momentos:
@@ -12,14 +12,14 @@ Daí a separação em dois momentos:
 from __future__ import annotations
 
 from src.core.log import obter
-from src.models import CEPS_SUL, Fornecedor, ModoFrete
+from src.models import CEPS_CENTRO, Fornecedor, ModoFrete
 
 log = obter(__name__)
 
-# Um CEP fora do Sul (Av. Paulista). Sem ele não dá para distinguir
-# "frete grátis para o Brasil inteiro" de "frete grátis só na região":
-# nos dois casos os três CEPs do Sul dão zero.
-CEP_FORA_DO_SUL = "01310100"
+# Um CEP fora da Região Centro (Av. Paulista). Sem ele não dá para
+# distinguir "frete grátis para o Brasil inteiro" de "frete grátis só na
+# região": nos dois casos os CEPs de GO e DF dão zero.
+CEP_FORA_DO_CENTRO = "01310100"
 
 # Pistas de "grátis acima de X" no texto que o site devolve junto da
 # cotação. Não é o valor: é o sinal de que existe um mínimo.
@@ -29,7 +29,7 @@ PISTAS_MINIMO = ("acima de", "a partir de", "compras acima", "minimo", "mínimo"
 # disse que NÃO entrega naquele CEP. É diferente de "não consegui
 # cotar": o primeiro reprova o fornecedor, o segundo só deixa a
 # pergunta em aberto. Sem essa distinção, um site fora do ar viraria
-# "não entrega no Sul" e sairia da lista por engano.
+# "não entrega na região" e sairia da lista por engano.
 SEM_ENTREGA = "sem opcao de entrega"
 
 
@@ -60,9 +60,9 @@ def classificar_site(
 ) -> tuple[ModoFrete, dict[str, bool]]:
     """Descobre como este site cobra frete, usando um produto representativo.
 
-    Devolve (modo, entrega_sul). A regra:
-      - todos zerados, inclusive fora do Sul  -> GRATIS_NACIONAL
-      - zerados só em PR/SC/RS                -> GRATIS_REGIAO
+    Devolve (modo, entrega_centro). A regra:
+      - todos zerados, inclusive fora da região -> GRATIS_NACIONAL
+      - zerados só em GO/DF                     -> GRATIS_REGIAO
       - cotação menciona mínimo para grátis   -> GRATIS_ACIMA_DE
       - valores diferentes por CEP            -> TABELA_POR_CEP
       - sem cotação online                    -> SOB_CONSULTA
@@ -70,16 +70,16 @@ def classificar_site(
     Uma unidade só é o que a entrega pede, então GRATIS_ACIMA_DE é, na
     prática, frete cobrado: o mínimo nunca é alcançado por 1 item.
 
-    `entrega_sul` só traz a UF sobre a qual houve resposta. UF que a
+    `entrega_centro` só traz a UF sobre a qual houve resposta. UF que a
     loja recusou entra como False; UF que não deu para cotar fica de
     fora do dicionário, e não vira um False que reprovaria o
     fornecedor por um timeout.
     """
     cotacoes: dict[str, tuple[float | None, str]] = {}
-    for uf, cep in CEPS_SUL.items():
+    for uf, cep in CEPS_CENTRO.items():
         cotacoes[uf] = _cotar(executor, url_produto_exemplo, cep)
 
-    entrega_sul = {
+    entrega_centro = {
         uf: atende
         for uf, (valor, obs) in cotacoes.items()
         if (atende := _entrega(valor, obs)) is not None
@@ -89,18 +89,18 @@ def classificar_site(
 
     if not valores:
         log.info("%s: nenhuma cotacao online -> SOB_CONSULTA", fornecedor.dominio)
-        return ModoFrete.SOB_CONSULTA, entrega_sul
+        return ModoFrete.SOB_CONSULTA, entrega_centro
 
     if any(pista in observacoes for pista in PISTAS_MINIMO):
-        return ModoFrete.GRATIS_ACIMA_DE, entrega_sul
+        return ModoFrete.GRATIS_ACIMA_DE, entrega_centro
 
-    if all(v == 0 for v in valores) and len(valores) == len(CEPS_SUL):
-        fora, _ = _cotar(executor, url_produto_exemplo, CEP_FORA_DO_SUL)
+    if all(v == 0 for v in valores) and len(valores) == len(CEPS_CENTRO):
+        fora, _ = _cotar(executor, url_produto_exemplo, CEP_FORA_DO_CENTRO)
         if fora == 0:
-            return ModoFrete.GRATIS_NACIONAL, entrega_sul
-        return ModoFrete.GRATIS_REGIAO, entrega_sul
+            return ModoFrete.GRATIS_NACIONAL, entrega_centro
+        return ModoFrete.GRATIS_REGIAO, entrega_centro
 
-    return ModoFrete.TABELA_POR_CEP, entrega_sul
+    return ModoFrete.TABELA_POR_CEP, entrega_centro
 
 
 def _cotar(executor, url: str, cep: str) -> tuple[float | None, str]:
@@ -125,5 +125,5 @@ def cotar_produto(
     de CEP da própria página do produto basta — e garante que preço e
     frete vieram da mesma página, que é o que o print precisa provar.
     """
-    cep = CEPS_SUL[uf]
+    cep = CEPS_CENTRO[uf]
     return executor.cotar_frete(url_produto, cep, produto)

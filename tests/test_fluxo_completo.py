@@ -1,6 +1,6 @@
 """O fluxo inteiro contra uma loja de verdade — só que a loja é nossa.
 
-É a prioridade da análise virada em teste: um site, um item, as três UFs,
+É a prioridade da análise virada em teste: um site, um item, as UFs da pesquisa (GO e DF),
 com Excel e prints. Sobe um servidor HTTP local que fala VTEX, roda
 varredura -> plano -> coleta -> entrega, e confere o resultado.
 
@@ -133,22 +133,21 @@ def test_plano_sai_da_varredura_e_alimenta_a_coleta(loja):
 # ---------------------------------------------------------------------------
 
 @sem_navegador
-def test_coleta_grava_as_tres_ufs_com_frete_diferente(loja):
+def test_coleta_grava_as_duas_ufs_com_frete_diferente(loja):
     _varrer()
     etapa2_plano.gerar_plano()
 
     [resultado] = _coletar()
-    assert resultado["gravados"] == 3
+    assert resultado["gravados"] == 2
     assert resultado["falhas"] == 0
 
     linhas = Path("data/coletas/127.0.0.1.jsonl").read_text(
         encoding="utf-8").strip().splitlines()
     por_uf = {json.loads(l)["uf"]: json.loads(l) for l in linhas}
 
-    assert set(por_uf) == {"PR", "SC", "RS"}
-    assert por_uf["PR"]["valor_frete"] == 24.9
-    assert por_uf["SC"]["valor_frete"] == 31.5
-    assert por_uf["RS"]["valor_frete"] == 38.9
+    assert set(por_uf) == {"GO", "DF"}
+    assert por_uf["GO"]["valor_frete"] == 24.9
+    assert por_uf["DF"]["valor_frete"] == 31.5
 
 
 @sem_navegador
@@ -173,9 +172,8 @@ def test_print_existe_um_por_uf(loja):
 
     prints = sorted(Path("data/output/prints").rglob("*.png"))
     assert [p.name for p in prints] == [
-        "U053__127.0.0.1__PR.png",
-        "U053__127.0.0.1__RS.png",
-        "U053__127.0.0.1__SC.png",
+        "U053__127.0.0.1__DF.png",
+        "U053__127.0.0.1__GO.png",
     ]
     assert all(p.stat().st_size > 1000 for p in prints)
 
@@ -198,7 +196,7 @@ def test_print_apagado_e_refeito_no_rerun(loja):
     etapa2_plano.gerar_plano()
     _coletar()
 
-    Path("data/output/prints/UTENSILIOS/U053__127.0.0.1__SC.png").unlink()
+    Path("data/output/prints/UTENSILIOS/U053__127.0.0.1__DF.png").unlink()
 
     [segunda] = _coletar()
     assert segunda["gravados"] == 1
@@ -215,13 +213,13 @@ def test_entrega_sai_com_as_16_colunas_e_os_prints_embutidos(loja):
     resumo = montar_entrega.montar(
         Path("data/coletas"), Path("data/output"), ["UTENSILIOS"]
     )
-    assert resumo["linhas"] == 3
+    assert resumo["linhas"] == 2
 
     ws = load_workbook("data/output/UTENSILIOS.xlsx").active
     assert [c.value for c in ws[1]] == montar_entrega.COLUNAS
-    assert ws.max_row == 4  # cabeçalho + 3 UFs
-    assert len(ws._images) == 3  # uma miniatura por linha
+    assert ws.max_row == 3  # cabeçalho + 2 UFs
+    assert len(ws._images) == 2  # uma miniatura por linha
 
     ufs = {ws.cell(row=n, column=montar_entrega.COLUNAS.index("UF") + 1).value
-           for n in (2, 3, 4)}
-    assert ufs == {"PR", "SC", "RS"}
+           for n in (2, 3)}
+    assert ufs == {"GO", "DF"}

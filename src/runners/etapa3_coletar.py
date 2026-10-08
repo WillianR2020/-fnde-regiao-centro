@@ -28,7 +28,7 @@ from src.core import frete
 from src.core.http import ErroHTTP, SiteBloqueado
 from src.core.log import obter
 from src.export.captura import PrintIndisponivel
-from src.models import CEPS_SUL, Coleta, Item
+from src.models import CEPS_CENTRO, Coleta, Item
 from src.runners.etapa2_varredura import ler_achados, registrar_bloqueio
 
 log = obter(__name__)
@@ -131,7 +131,7 @@ def coletar_site(executor: Executor, itens: list[Item]) -> dict:
     pelos N itens da loja — é aqui que está a economia do projeto.
 
     Dois níveis: uma passada por item (preço e desconto, que não mudam
-    entre UFs) e três por item (frete e print, que mudam).
+    entre UFs) e uma por UF da pesquisa (frete e print, que mudam).
     """
     dominio = executor.fornecedor.dominio
     DESTINO.mkdir(parents=True, exist_ok=True)
@@ -159,7 +159,7 @@ def coletar_site(executor: Executor, itens: list[Item]) -> dict:
                             dominio, item.id_item)
                 continue
 
-            pendentes = [uf for uf in CEPS_SUL if (item.id_item, uf) not in feitos]
+            pendentes = [uf for uf in CEPS_CENTRO if (item.id_item, uf) not in feitos]
             if not pendentes:
                 continue
 
@@ -217,7 +217,7 @@ def _coletar_uf(executor, item: Item, produto, achado: dict, uf: str, dominio: s
 
     destino = caminho_print(item.categoria, item.id_item, dominio, uf)
     destino.parent.mkdir(parents=True, exist_ok=True)
-    caminho = executor.capturar_print(url, CEPS_SUL[uf], str(destino))
+    caminho = executor.capturar_print(url, CEPS_CENTRO[uf], str(destino))
 
     preco_final = produto.preco
     preco_produto = produto.preco_lista or produto.preco

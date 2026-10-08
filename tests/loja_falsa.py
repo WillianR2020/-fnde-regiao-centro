@@ -8,7 +8,7 @@ Ela é deliberadamente hostil nos pontos em que o pipeline já errou:
   - o primeiro SKU é a unidade avulsa de 30 cm, e o item pede o kit de 5;
   - o primeiro seller do kit está sem estoque e mais caro;
   - o preço tem ListPrice maior que Price (desconto de verdade);
-  - o frete muda nos três CEPs do Sul.
+  - o frete muda nos CEPs de GO e DF.
 """
 
 from __future__ import annotations
@@ -18,8 +18,11 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
 
+from src.models import CEPS_CENTRO
+
 # Frete diferente por CEP: é o caso TABELA_POR_CEP, o mais comum.
-FRETES = {"80010010": 2490, "88010400": 3150, "90010150": 3890}
+# Chaveado pelos CEPs de referência do projeto, para não sair de sincronia.
+FRETES = {CEPS_CENTRO["GO"]: 2490, CEPS_CENTRO["DF"]: 3150}
 
 PAGINA = """<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">

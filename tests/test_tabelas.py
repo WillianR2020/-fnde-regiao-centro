@@ -31,7 +31,7 @@ def test_fornecedor_sobrevive_a_ida_e_volta(master):
         situacao_cadastral="ATIVA",
         eh_atacadista=True,
         flag_atacarejo=False,
-        entrega_sul={"PR": True, "SC": True, "RS": False},
+        entrega_centro={"GO": True, "DF": False},
         plataforma=Plataforma.VTEX,
         modo_frete=ModoFrete.TABELA_POR_CEP,
         status=Status.APROVADO,
@@ -57,11 +57,11 @@ def test_lista_de_cnaes_secundarios_nao_se_perde(master):
 def test_entrega_por_uf_nao_se_perde(master):
     tabelas.gravar_fornecedores([Fornecedor(
         nome="X", dominio="x.com.br", url_base="https://x.com.br", uf="PR",
-        entrega_sul={"PR": True, "SC": False}, status=Status.APROVADO,
+        entrega_centro={"GO": True, "DF": False}, status=Status.APROVADO,
     )], master)
 
     lido = tabelas.ler_fornecedores(caminho=master)["x.com.br"]
-    assert lido.entrega_sul == {"PR": True, "SC": False}
+    assert lido.entrega_centro == {"GO": True, "DF": False}
 
 
 def test_apenas_aprovados_e_o_padrao(master):

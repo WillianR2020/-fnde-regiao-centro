@@ -35,11 +35,13 @@ class ModoFrete(StrEnum):
     SOB_CONSULTA = "SOB_CONSULTA"
 
 
-# CEPs de referência, um por estado do Sul.
-CEPS_SUL: dict[str, str] = {
-    "PR": "80010010",
-    "SC": "88010400",
-    "RS": "90010150",
+# CEPs de referência, um por UF da pesquisa (Região Centro: GO e DF).
+# Definidos pela equipe para o cálculo de frete (conferidos no ViaCEP):
+#   GO  74933-130  Rua Monte Carmelo, Cardoso, Aparecida de Goiânia
+#   DF  70830-020  Quadra SGAN 601 Módulo J, Asa Norte, Brasília
+CEPS_CENTRO: dict[str, str] = {
+    "GO": "74933130",
+    "DF": "70830020",
 }
 
 
@@ -64,8 +66,8 @@ class Fornecedor:
     dominio: str  # CHAVE PRIMÁRIA — normalizada
     url_base: str
     # UF da SEDE, para referência — não é critério. Fornecedor de
-    # qualquer estado entra, desde que entregue no Sul e passe no
-    # CNAE/CNPJ. Quem decide é `entrega_sul`, não este campo.
+    # qualquer estado entra, desde que entregue em GO ou DF e passe no
+    # CNAE/CNPJ. Quem decide é `entrega_centro`, não este campo.
     uf: str
     cnpj: str | None = None  # só dígitos, 14 chars
     cnae_principal: str | None = None
@@ -73,10 +75,10 @@ class Fornecedor:
     situacao_cadastral: str | None = None
     eh_atacadista: bool | None = None
     flag_atacarejo: bool = False
-    # {"PR": True, "SC": False}. Só traz a UF sobre a qual houve
+    # {"GO": True, "DF": False}. Só traz a UF sobre a qual houve
     # resposta: UF ausente é "não deu para saber", não é "não entrega".
     # É este campo, e não a UF da sede, que aprova ou reprova.
-    entrega_sul: dict[str, bool] = field(default_factory=dict)
+    entrega_centro: dict[str, bool] = field(default_factory=dict)
     plataforma: Plataforma = Plataforma.DESCONHECIDA
     modo_frete: ModoFrete | None = None
     status: Status = Status.PENDENTE

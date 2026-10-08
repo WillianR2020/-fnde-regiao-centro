@@ -281,7 +281,7 @@ def test_site_em_duas_abas_guarda_as_duas_origens(pasta, tmp_path):
     })
 
     [forn] = unificar_planilhas(
-        base_sul=tmp_path / "x.xlsx",
+        base_regional=tmp_path / "x.xlsx",
         base_atacadistas=tmp_path / "y.xlsx",
         pasta_leads=pasta,
     )
@@ -359,7 +359,7 @@ def test_lead_acrescenta_dominio_novo(tmp_path, pasta):
     escrever(pasta, "novos.csv", {"site": ["novo.com.br"], "Empresa": ["Novo"]})
 
     fornecedores = unificar_planilhas(
-        base_sul=tmp_path / "nao_existe.xlsx",
+        base_regional=tmp_path / "nao_existe.xlsx",
         base_atacadistas=tmp_path / "nao_existe2.xlsx",
         pasta_leads=pasta,
     )
@@ -385,7 +385,7 @@ def test_lead_nao_sobrescreve_o_que_a_base_ja_resolveu(tmp_path, pasta):
     })
 
     [forn] = unificar_planilhas(
-        base_sul=tmp_path / "nao_existe.xlsx",
+        base_regional=tmp_path / "nao_existe.xlsx",
         base_atacadistas=base,
         pasta_leads=pasta,
     )
@@ -408,7 +408,7 @@ def test_lead_preenche_buraco_sem_apagar_nada(tmp_path, pasta):
     })
 
     [forn] = unificar_planilhas(
-        base_sul=base,
+        base_regional=base,
         base_atacadistas=tmp_path / "nao_existe.xlsx",
         pasta_leads=pasta,
     )
@@ -422,7 +422,7 @@ def test_dois_leads_do_mesmo_dominio_viram_um(pasta, tmp_path):
     escrever(pasta, "b.csv", {"site": ["https://www.alfa.com.br/"], "Empresa": ["Alfa"]})
 
     fornecedores = unificar_planilhas(
-        base_sul=tmp_path / "x.xlsx",
+        base_regional=tmp_path / "x.xlsx",
         base_atacadistas=tmp_path / "y.xlsx",
         pasta_leads=pasta,
     )

@@ -214,7 +214,7 @@ class VtexExecutor(Executor):
         """Menor SLA da simulação de checkout, para 1 unidade naquele CEP.
 
         `produto` vem da coleta, que já chamou `detalhar()` uma vez e não
-        precisa repetir a requisição a cada uma das três UFs. O seller
+        precisa repetir a requisição a cada uma das UFs da pesquisa. O seller
         tem que ser o mesmo que definiu o preço: cotar frete do seller A
         com preço do seller B monta uma linha que não existe na loja.
         """

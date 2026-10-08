@@ -29,10 +29,12 @@ varrer, e numa base nova nenhuma das duas rodava.
 
 ## Dois canais: atacado (padrão) e --varejista
 
-    padrão       itens.csv (132)       x  todo APROVADO, menos quem só
+    padrão       itens.csv (120)       x  todo APROVADO, menos quem só
                                           entrou pela exceção de varejo
-    --varejista  itens_varejo.csv (31) x  só CNAE principal 47.53-9 ou
-                                          47.59-8
+    --varejista  itens_varejo.csv      x  só CNAE principal 47.53-9 ou
+                                          47.59-8 (herdado da versão Sul;
+                                          a pesquisa SEAD-GO ainda não
+                                          tem lista de varejo)
 
 O canal vale para as duas fases. O critério de site mora na regra de
 CNAE (src/validacao/classificar_cnae.py), não aqui: quem decide o que é
@@ -78,7 +80,7 @@ def carregar_itens(
         raise FileNotFoundError(
             f"{ITENS_VAREJO} nao existe. Gere com:\n"
             f"  python -m src.runners.etapa0_limpar_itens "
-            f'--entrada "data/raw/Lista de Equipamentos_Varejo_Sul xlsx.xlsx" '
+            f'--entrada "data/raw/<lista de varejo>.xlsx" '
             f"--saida {ITENS_VAREJO}"
         )
     return tabelas.ler_itens(categorias, caminho=ITENS_VAREJO)
@@ -351,7 +353,7 @@ def _registrar_falha(dominio: str, fase: str, erro: Exception) -> None:
 if __name__ == "__main__":
     import argparse
 
-    p = argparse.ArgumentParser(description="Orquestrador do pipeline FNDE Sul")
+    p = argparse.ArgumentParser(description="Orquestrador do pipeline — Região Centro (GO e DF)")
     p.add_argument("fase", choices=["varredura", "coleta"])
     p.add_argument("--categoria", action="append", dest="categorias")
     p.add_argument("--site", action="append", dest="sites")
