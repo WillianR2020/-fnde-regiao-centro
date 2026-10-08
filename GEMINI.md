@@ -1,4 +1,4 @@
-# sul-scrapers
+# fnde-regiao-centro
 
 O contexto do projeto está em **AGENTS.md**, na raiz. Leia aquele arquivo antes
 de qualquer tarefa neste repositório.

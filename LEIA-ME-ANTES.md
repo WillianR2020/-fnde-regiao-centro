@@ -1,3 +1,7 @@
+> **Histórico.** Este arquivo descreve como o esqueleto foi encaixado no fork
+> que deu origem ao `sul-scrapers`. Não se aplica a esta versão Região Centro;
+> comece pelo `README.md`.
+
 # Como encaixar este esqueleto no fork
 
 Este `src/` é **novo**, não é uma refatoração do `scraper/` que veio do fork.

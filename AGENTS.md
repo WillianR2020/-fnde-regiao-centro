@@ -1,23 +1,41 @@
-# AGENTS.md — sul-scrapers
+# AGENTS.md — fnde-regiao-centro
 
 Contexto operativo do projeto, para qualquer assistente de código.
 
 Este arquivo é a fonte única. `CLAUDE.md` e `GEMINI.md` apenas apontam para ele —
-edite aqui, nunca lá. O guia completo para humanos está em `docs/GUIA.md`, e a
-estrutura do repositório em `docs/ESTRUTURA.md`.
+edite aqui, nunca lá. O guia para humanos é o `README.md`. `docs/GUIA.md` e
+`docs/ESTRUTURA.md` vêm da versão Sul e podem estar desatualizados: em caso
+de divergência, vale este arquivo e o código.
+
+Este repositório é a adaptação para a **Região Centro (GO e DF)** do
+`cosmic-axolotl/sul-scrapers` (Região Sul), com histórico próprio. As seções
+abaixo foram herdadas e ajustadas; números e nomes de loja citados como
+exemplo histórico ("89 sites", "132 itens") são da rodada Sul.
 
 ## O que este projeto entrega
 
-Planilha de preços de 144 itens da Lista de Equipamentos FNDE, com **5 preços por item e por UF** (PR, SC, RS), de **5 fornecedores distintos** por item. Total: 2.160 linhas. Prazo: 25/09/2026.
+Planilha de preços dos 124 itens da **Pesquisa SEAD-GO de Limpeza Predial**
+(`data/raw/Pesquisa_SEAD_GO_Limpeza_Predial.xlsx`, aba "Solicitação itens"),
+coletados no **atacado**, com **5 preços por item e por UF** (**GO e DF**), de
+**5 fornecedores distintos** por item. 120 itens na coleta automática (até
+1.200 linhas) e 4 na manual. Prazo: **a definir**.
+
+As UFs e os CEPs de frete moram num lugar só, `CEPS_CENTRO` em
+`src/models.py`: GO 74933-130 (Aparecida de Goiânia) e DF 70830-020
+(Brasília), definidos pela equipe. `UFS_CENTRO` (etapa 1) deriva dele.
+
+Fornecedores entram por `data/raw/leads/`: primeiro as sugestões da própria
+pesquisa (`sugestoes_sead_go.csv`), depois a `lista_sites.xlsx` herdada da
+prospecção anterior.
 
 Template de saída: `data/raw/FNDE_output.xlsx` (15 colunas) + uma 16ª coluna `PRINT`.
 
 ## Regras invioláveis
 
 1. **Só entra fornecedor com CNAE principal na divisão 46** (atacado). Divisão 47 com 46 secundário entra com `flag_atacarejo = SIM`. Situação cadastral diferente de ATIVA reprova.
-   **Exceção decidida pelo grupo em 23/09/2026:** as classes **47.53-9** (eletrodomésticos e equipamentos de áudio e vídeo) e **47.59-8** (artigos de uso doméstico n.e.) entram mesmo **sem** CNAE 46 secundário, também com `flag_atacarejo = SIM`. O motivo é a categoria EQUIPAMENTO — fogão industrial, freezer e balança são vendidos por loja registrada nessas classes, e reprová-las deixava a categoria sem fornecedor para os 5 preços por item. A lista está em `CLASSES_VAREJO_ACEITAS`, comparada por classe (5 dígitos), então pega 4759-8/01 e 4759-8/99 de uma vez.
+   **Exceção decidida pelo grupo do Sul em 23/09/2026 (herdada; confirmar se vale para a SEAD-GO):** as classes **47.53-9** (eletrodomésticos e equipamentos de áudio e vídeo) e **47.59-8** (artigos de uso doméstico n.e.) entram mesmo **sem** CNAE 46 secundário, também com `flag_atacarejo = SIM`. O motivo é a categoria EQUIPAMENTO — fogão industrial, freezer e balança são vendidos por loja registrada nessas classes, e reprová-las deixava a categoria sem fornecedor para os 5 preços por item. A lista está em `CLASSES_VAREJO_ACEITAS`, comparada por classe (5 dígitos), então pega 4759-8/01 e 4759-8/99 de uma vez.
    **Quem só entrou pela exceção só é varrido no canal `--varejista`** (ver "Dois canais" abaixo): uma loja de eletrodoméstico não é fonte de EPI nem de uniforme.
-2. **A UF da sede não é critério; entregar no Sul é.** Fornecedor de qualquer estado entra, desde que entregue em PR, SC ou RS e passe no CNAE/CNPJ. Quem decide é `entrega_sul`, e reprovação exige **recusa** da loja nas três UFs — timeout ou site fora do ar deixa PENDENTE, não reprova.
+2. **A UF da sede não é critério; entregar na Região Centro é.** Fornecedor de qualquer estado entra, desde que entregue em GO ou DF e passe no CNAE/CNPJ. Quem decide é `entrega_centro`, e reprovação exige **recusa** da loja em todas as UFs da pesquisa — timeout ou site fora do ar deixa PENDENTE, não reprova.
 3. **Nenhum site é coletado sem estar em `data/interim/fornecedores_master.csv` com status APROVADO.**
 4. **O site é a unidade de execução**, não o item nem a categoria. Um processo por domínio, sempre.
 5. **Coleta e montagem são programas separados.** O coletor não conhece o template do FNDE; o montador não abre navegador.
@@ -44,7 +62,7 @@ class Fornecedor:
     situacao_cadastral: str | None
     eh_atacadista: bool | None
     flag_atacarejo: bool
-    entrega_sul: dict[str, bool]   # UF ausente = não deu para saber, != não entrega
+    entrega_centro: dict[str, bool]  # {"GO": True, "DF": False}; UF ausente = não deu para saber
     plataforma: Plataforma    # vtex|woocommerce|nuvemshop|shopify|tray|magento|desconhecida
     modo_frete: ModoFrete | None
     status: Status            # APROVADO | REPROVADO | PENDENTE
@@ -284,10 +302,11 @@ python -m src.orquestrador coleta --varejista                             # idem
 
 | | Itens | Sites |
 |---|---|---|
-| padrão | `data/interim/itens.csv` (132) | todo APROVADO, **menos** quem só entrou pela exceção de varejo |
-| `--varejista` | `data/interim/itens_varejo.csv` (31) | **só** CNAE principal 47.53-9 ou 47.59-8 |
+| padrão | `data/interim/itens.csv` (120) | todo APROVADO, **menos** quem só entrou pela exceção de varejo |
+| `--varejista` | `data/interim/itens_varejo.csv` (não existe ainda) | **só** CNAE principal 47.53-9 ou 47.59-8 |
 
-Hoje isso dá 89 sites no padrão e 8 no varejista. Cinco estão nos dois:
+A pesquisa SEAD-GO ainda não tem lista de varejo; o canal foi mantido
+como veio. Na rodada Sul eram 89 sites no padrão e 8 no varejista. Cinco estavam nos dois:
 são 47.59-8 **com** CNAE 46 secundário, aprovados como atacarejo antes
 da exceção existir (frigo, multibar, balancassaoroque, realequipamentos,
 renovacaoporcelanas). Três estão só no varejista, porque só existem por
@@ -307,7 +326,7 @@ site na coluna **Canal**.
 
 ```bash
 python -m src.runners.etapa0_limpar_itens \
-    --entrada "data/raw/Lista de Equipamentos_Varejo_Sul xlsx.xlsx" \
+    --entrada "data/raw/<lista de varejo>.xlsx" \
     --saida data/interim/itens_varejo.csv
 ```
 
@@ -405,9 +424,24 @@ medidas, não só a espessura.
 
 `EAN` está 100% vazia na lista de origem — não existe match por código de barras.
 
-**`id_item` é string, não int.** O ID FGV mistura numéricos ("1", "33") com
-alfanuméricos ("G008", "U029", "E037", "318N") — 96 dos 144 não são números.
-Converter para int perde dois terços da lista.
+**`id_item` é string, não int.** Na lista FNDE do Sul o ID FGV misturava
+numéricos ("1", "33") com alfanuméricos ("G008", "U029", "E037", "318N") — 96
+dos 144 não eram números. Na SEAD-GO os IDs são 1000–1123, mas continuam
+texto: converter para int quebra qualquer lista que volte a misturar.
+
+### Lista SEAD-GO na etapa 0
+
+Duas diferenças de formato em relação à lista FNDE, tratadas em
+`etapa0_limpar_itens.py` sem mudar a saída da lista FNDE (conferido linha a
+linha contra o `itens.csv` do Sul):
+
+- **Grupo de Insumo é setor, não produto** ("LIMPEZA E HIGIENE", "LIMPEZA
+  PREDIAL", "EPI / UNIFORME", em `GRUPOS_GENERICOS`). Para esses, a base
+  dos termos de busca é o nome do produto no começo da descrição
+  (`termo_base`): "SACO PARA LIXO – 20 L - ..." -> "saco lixo 20 l".
+- **O tamanho vem na coluna Embalagem** ("GALÃO 5 L", "PACOTE C/ 100") ou
+  na unidade (KG, L). `com_embalagem` acrescenta isso à descrição como
+  "EMBALAGEM: ...", que é o que o matching lê. Só nos itens automáticos.
 
 ## Padrão de nome dos prints
 
@@ -419,14 +453,16 @@ O montador deriva o caminho das próprias colunas da linha. Miniatura JPEG ~600p
 
 ## Fora do escopo automatizado
 
-12 itens não têm loja online com carrinho e são coletados à mão:
-COMBUSTÍVEL/GLP (9) e SAÚDE OCUPACIONAL/exames (3).
+Na SEAD-GO, 4 itens não têm loja online com carrinho e são coletados à
+mão: categoria **AUXÍLIOS** — passagem de ônibus municipal de Goiânia (1) e
+ASO admissional/demissional/periódico (3). As sugestões de empresa para
+eles estão na aba "Sugestões de empresas" da planilha SEAD.
+`CATEGORIAS_MANUAIS` mantém também COMBUSTÍVEL e SAÚDE OCUPACIONAL, da
+lista FNDE do Sul.
 
-A categoria VEICULOS **não** é veículo: são 2 pneus com especificação
-completa (235/75R17.5 e 265/65R17), vendidos normalmente por atacadista de
-autopeças. Ficam na coleta automática — 132 itens no total.
-
-Isso abre uma pendência no CNAE: distribuidora de pneus costuma ter CNAE do
+**Herança do Sul, sem efeito na SEAD-GO:** a categoria VEICULOS da lista
+FNDE eram 2 pneus, e isso abriu uma pendência no CNAE que continua no
+código (`GRUPO_AUTOPECAS` em `classificar_cnae.py`): distribuidora de pneus costuma ter CNAE do
 grupo **4530-7** (divisão 45, veículos automotores), e a regra atual reprova
 qualquer coisa fora da divisão 46. Antes de rodar a Etapa 1 para os pneus,
 decidir quais subclasses de 4530-7 contam como atacado e conferir os códigos
@@ -434,7 +470,7 @@ na tabela oficial do CNAE. Não chute os códigos.
 
 ## Herança do fork
 
-Este repo é fork de `giuprofilo/mercados-scraper`, que era voltado a alimentos. Aproveitar de lá:
+O `sul-scrapers`, de onde este repositório veio, é fork de `giuprofilo/mercados-scraper`, que era voltado a alimentos. Aproveitar de lá:
 
 - `setup_sessao.py` — salva sessão/CEP por site com `launch_persistent_context`. Resolve o problema de CEP sem disparar anti-bot; serve direto para a classificação de frete.
 - `debug_inspecionar.py` — salva HTML renderizado + screenshot de uma URL. Use antes de escrever qualquer seletor novo.
