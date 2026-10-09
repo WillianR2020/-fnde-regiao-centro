@@ -185,3 +185,28 @@ def test_termo_de_busca_usa_a_maior_dimensao_em_unidade_legivel(item_tabua):
     termos = matching.gerar_termos(item_tabua)
     assert any("50 cm" in t for t in termos), termos
     assert not any("0.008" in t for t in termos), termos
+
+
+ALCOOL_54 = "ÁLCOOL ETÍLICO 54% LÍQUIDO - USO GERAL. EMBALAGEM: GALÃO 5 L"
+
+
+def test_teor_divergente_nao_e_aceito_mesmo_com_volume_certo():
+    """SEAD-GO 1001 pede 54%; o 70% do mesmo galão é o item 1002.
+
+    O volume (5 L) batia e bastava: "álcool 70% 5 litros" entrava como
+    aceito no lugar do 54%.
+    """
+    from src.core.matching import avaliar
+
+    a = avaliar(ALCOOL_54, "Álcool Etílico Hidratado 70% 5 Litros")
+    assert a.classificacao != "aceito"
+    assert "concentracao" in a.motivo
+    for titulo in ("Álcool Etílico Hidratado 96° 5 Litros", "Álcool 70º 5L"):
+        assert avaliar(ALCOOL_54, titulo).classificacao != "aceito", titulo
+
+
+def test_teor_igual_continua_aceito():
+    from src.core.matching import avaliar
+
+    assert avaliar(ALCOOL_54, "Álcool Etílico 54% 5 Litros").classificacao == "aceito"
+    assert avaliar(ALCOOL_54, "Álcool 54 GL 5L").classificacao == "aceito"

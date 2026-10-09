@@ -69,6 +69,12 @@ DIMENSOES: dict[str, tuple[str, float]] = {
     "quilo": ("massa", 1.0),
     "w": ("potencia", 1.0),
     "kw": ("potencia", 1000.0),
+    # Teor: álcool 54% e álcool 70% são itens diferentes da mesma lista
+    # (SEAD-GO 1001 e 1002), com o mesmo nome e o mesmo galão de 5 L.
+    "%": ("concentracao", 1.0),
+    "deg": ("concentracao", 1.0),  # "96°" depois do unidecode
+    "gl": ("concentracao", 1.0),
+    "inpm": ("concentracao", 1.0),
 }
 
 # Ordem importa: as maiores primeiro, senão "mm" é lido como "m".
@@ -136,8 +142,10 @@ def _texto_medidas(texto: str) -> str:
     com 20" (vinte peças). O conectivo é o que separa os dois casos, e
     por isso ele precisa sobreviver até a extração.
     """
-    t = unidecode(texto or "").lower()
-    return re.sub(r"[^a-z0-9,./\"\s]", " ", t)
+    # "70º" (ordinal) e "70°" (grau) chegam misturados nos títulos;
+    # o unidecode lê o primeiro como "o" e o segundo como "deg".
+    t = unidecode((texto or "").replace("º", "°")).lower()
+    return re.sub(r"[^a-z0-9,./\"%\s]", " ", t)
 
 
 # ---------------------------------------------------------------------------
@@ -225,16 +233,17 @@ def comparar_dimensoes(item: str, produto: str) -> tuple[str, str]:
     if not familias:
         return "ausente", ""
 
-    for familia in familias:
+    # Toda família que os dois lados citam tem que conferir. Bastar uma
+    # deixava "álcool 70% 5 L" passar por "álcool 54% 5 L": o volume
+    # batia e o teor nem era olhado.
+    for familia in sorted(familias):
         valores_item = [v for f, v in do_item if f == familia]
         valores_produto = [v for f, v in do_produto if f == familia]
-        if any(_mesmo_valor(a, b) for a in valores_item for b in valores_produto):
-            return "bate", f"{familia} confere"
+        if not any(_mesmo_valor(a, b) for a in valores_item for b in valores_produto):
+            return "diverge", (f"{familia} pedida {sorted(valores_item)} "
+                               f"e o produto traz {sorted(valores_produto)}")
 
-    familia = sorted(familias)[0]
-    pedido = sorted(v for f, v in do_item if f == familia)
-    oferta = sorted(v for f, v in do_produto if f == familia)
-    return "diverge", f"{familia} pedida {pedido} e o produto traz {oferta}"
+    return "bate", f"{', '.join(sorted(familias))} confere"
 
 
 def comparar_embalagem(item: str, produto: str) -> tuple[str, str]:
