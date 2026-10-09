@@ -1,0 +1,6 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,classificacao,motivo_match
+1000,ciatacado.com,https://ciatacado.com/produtos-de-limpeza/,Produtos de Limpeza,0.487,revisar,
+1000,panan.com.br,https://www.panan.com.br/padaria/amassadeiras/batedeira-planetario-bambina-5-l-digital-bp05-bivolt-monofasica-g-paniz,Batedeira Planetário Bambina 5 L Digital Bp05 Bivolt Monofásica G.Paniz,0.522,revisar,
+1001,casadosquimicos.com.br,https://www.casadosquimicos.com.br/alcool-etilico-hidratado-70-5-litros-151381,Álcool Etílico Hidratado 70% 5 Litros,0.492,revisar,concentracao pedida [54.0] e o produto traz [70.0]
+1001,generalclean.com.br,https://www.generalclean.com.br/alcool-liquido-70-5lt,ALCOOL LIQUIDO 70% - 5LT,0.64,revisar,concentracao pedida [54.0] e o produto traz [70.0]
+1001,panan.com.br,https://www.panan.com.br/padaria/amassadeiras/batedeira-planetario-bambina-5-l-digital-bp05-bivolt-monofasica-g-paniz,Batedeira Planetário Bambina 5 L Digital Bp05 Bivolt Monofásica G.Paniz,0.515,revisar,

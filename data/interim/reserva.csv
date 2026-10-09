@@ -1,0 +1,2 @@
+id_item,dominio,uf,url_produto,titulo_encontrado,preco_produto,valor_desconto,obs_desconto,preco_final,valor_frete,obs_frete,caminho_print,score_match,coletado_em,categoria,sede_go,motivo_reserva
+1000,lojabraslimpo.com.br,GO,https://www.lojabraslimpo.com.br/agua-sanitaria-5l-ype-104554/p?skuId=5018,Água Sanitária 5L Ypê,19.62,,,19.62,,sem opcao de entrega para este CEP,data\output\prints\MATERIAIS DE CONSUMO\1000__lojabraslimpo.com.br__GO.png,0.84,2026-10-08T10:38:33,MATERIAIS DE CONSUMO,False,fornecedor não entrega em GO

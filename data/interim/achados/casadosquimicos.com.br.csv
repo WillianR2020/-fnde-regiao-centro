@@ -1,0 +1,2 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1001,casadosquimicos.com.br,https://www.casadosquimicos.com.br/alcool-etilico-hidratado-70-5-litros-151381,Álcool Etílico Hidratado 70% 5 Litros,0.492,64.9,2026-10-08T10:51:51,revisar,concentracao pedida [54.0] e o produto traz [70.0],

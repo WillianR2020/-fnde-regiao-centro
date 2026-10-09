@@ -1,0 +1,3 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1000,generalclean.com.br,https://www.generalclean.com.br/agua-sanitaria-5-litros,Água Sanitária 5 Litros,0.856,17.24,2026-10-08T10:59:29,aceito,,
+1001,generalclean.com.br,https://www.generalclean.com.br/alcool-liquido-70-5lt,ALCOOL LIQUIDO 70% - 5LT,0.64,48.69,2026-10-08T10:59:40,revisar,concentracao pedida [54.0] e o produto traz [70.0],
