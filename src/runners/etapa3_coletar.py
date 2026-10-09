@@ -179,6 +179,14 @@ def coletar_site(executor: Executor, itens: list[Item]) -> dict:
                             dominio, item.id_item, type(e).__name__, e)
                 continue
 
+            # Preço de produto que não se pode comprar não é cotação: a
+            # linha entraria na entrega com um valor que ninguém paga.
+            if not produto.disponivel:
+                falhas += 1
+                log.warning("%s: item %s fora de estoque em %s; fica fora da coleta",
+                            dominio, item.id_item, url)
+                continue
+
             for uf in pendentes:
                 try:
                     registro = _coletar_uf(executor, item, produto, achado, uf, dominio)
@@ -213,11 +221,22 @@ def _coletar_uf(executor, item: Item, produto, achado: dict, uf: str, dominio: s
     imagem, e o frete só aparece na página depois do CEP preenchido.
     """
     url = achado["url_produto"]
-    valor_frete, obs_frete = frete.cotar_produto(executor, url, uf, produto)
+    uf_sede = executor.fornecedor.uf
+
+    # Sede em GO: o frete não é calculado (regra SEAD-GO de 09/10/2026),
+    # e o print é só da página do produto. Sede fora de GO: o frete para
+    # GO é cotado aqui e somado ao preço na montagem; sem cotação, a
+    # entrega em GO não está confirmada e a linha não entra.
+    if frete.sede_na_uf_da_pesquisa(uf_sede):
+        valor_frete, obs_frete = None, frete.FRETE_DISPENSADO
+        cep_do_print = ""
+    else:
+        valor_frete, obs_frete = frete.cotar_produto(executor, url, uf, produto)
+        cep_do_print = CEPS_CENTRO[uf]
 
     destino = caminho_print(item.categoria, item.id_item, dominio, uf)
     destino.parent.mkdir(parents=True, exist_ok=True)
-    caminho = executor.capturar_print(url, CEPS_CENTRO[uf], str(destino))
+    caminho = executor.capturar_print(url, cep_do_print, str(destino))
 
     preco_final = produto.preco
     preco_produto = produto.preco_lista or produto.preco
@@ -246,6 +265,9 @@ def _coletar_uf(executor, item: Item, produto, achado: dict, uf: str, dominio: s
     registro = asdict(coleta)
     registro["coletado_em"] = coleta.coletado_em.isoformat(timespec="seconds")
     registro["categoria"] = item.categoria  # o montador precisa, e sai de graça
+    # A sede no momento da coleta: é ela que explica por que esta linha
+    # tem ou não tem frete, mesmo que o master mude depois.
+    registro["uf_sede"] = uf_sede
     return registro
 
 

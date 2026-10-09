@@ -33,7 +33,7 @@ from __future__ import annotations
 from urllib.parse import quote, urlparse
 
 from src.adapters.base import Executor
-from src.core.frete import SEM_ENTREGA
+from src.core.frete import FRETE_A_COLETAR, SEM_ENTREGA
 from src.core.http import ErroHTTP, RespostaInvalida, SiteBloqueado
 from src.core.log import obter
 from src.models import ProdutoBruto
@@ -239,7 +239,9 @@ class VtexExecutor(Executor):
         except ErroHTTP as e:
             log.warning("%s: simulacao de frete falhou (%s)",
                         self.fornecedor.dominio, type(e).__name__)
-            return None, f"simulacao de frete indisponivel ({type(e).__name__})"
+            # A VTEX simula frete; quem falhou foi a chamada. Coletável à mão.
+            return None, (f"{FRETE_A_COLETAR}: simulacao de frete indisponivel "
+                          f"({type(e).__name__})")
 
         if not isinstance(dados, dict):
             return None, "simulacao devolveu formato inesperado"

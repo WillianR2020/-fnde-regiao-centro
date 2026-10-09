@@ -71,12 +71,15 @@ class Executor(ABC):
     # --- Etapa 3: coleta ----------------------------------------------------
 
     def detalhar(self, url_produto: str) -> ProdutoBruto:
-        """Preço e desconto na página do produto.
+        """Preço, desconto e estoque na página do produto.
 
-        O padrão serve para plataformas cuja busca já devolve preço
-        confiável. Sobrescreva onde a listagem mente.
+        O padrão lê a página pelo navegador (`core.pagina_produto`), a
+        mesma que o print fotografa. Sobrescreva onde a plataforma tem
+        API de ficha, como a VTEX.
         """
-        raise NotImplementedError
+        from src.core import pagina_produto
+
+        return pagina_produto.detalhar(url_produto)
 
     def cotar_frete(
         self,
@@ -93,8 +96,16 @@ class Executor(ABC):
         refazer a mesma requisição uma vez por UF -- e para garantir que
         o frete é do mesmo SKU e do mesmo vendedor que deram o preço.
         Quem não precisar dele pode ignorá-lo.
+
+        O padrão preenche o CEP na página pelo navegador e lê a opção de
+        entrega mais barata que aparecer. Página sem campo de CEP vira
+        frete sob consulta, com observação.
         """
-        raise NotImplementedError
+        from src.core import pagina_produto
+
+        return pagina_produto.cotar_frete(
+            url_produto, cep, self.SEL_CAMPO_CEP, self.SEL_RESULTADO_FRETE,
+        )
 
     # Sobrescreva no adapter do site quando a heurística de CEP não
     # pegar. Estes dois são os únicos seletores que o print precisa.

@@ -133,21 +133,22 @@ def test_plano_sai_da_varredura_e_alimenta_a_coleta(loja):
 # ---------------------------------------------------------------------------
 
 @sem_navegador
-def test_coleta_grava_as_duas_ufs_com_frete_diferente(loja):
+def test_coleta_grava_so_go_com_o_frete_de_go(loja):
+    """Só GO desde 09/10/2026; a loja falsa tem sede no PR, então cota frete."""
     _varrer()
     etapa2_plano.gerar_plano()
 
     [resultado] = _coletar()
-    assert resultado["gravados"] == 2
+    assert resultado["gravados"] == 1
     assert resultado["falhas"] == 0
 
     linhas = Path("data/coletas/127.0.0.1.jsonl").read_text(
         encoding="utf-8").strip().splitlines()
     por_uf = {json.loads(l)["uf"]: json.loads(l) for l in linhas}
 
-    assert set(por_uf) == {"GO", "DF"}
+    assert set(por_uf) == {"GO"}
     assert por_uf["GO"]["valor_frete"] == 24.9
-    assert por_uf["DF"]["valor_frete"] == 31.5
+    assert por_uf["GO"]["uf_sede"] == "PR"
 
 
 @sem_navegador
@@ -171,10 +172,7 @@ def test_print_existe_um_por_uf(loja):
     _coletar()
 
     prints = sorted(Path("data/output/prints").rglob("*.png"))
-    assert [p.name for p in prints] == [
-        "U053__127.0.0.1__DF.png",
-        "U053__127.0.0.1__GO.png",
-    ]
+    assert [p.name for p in prints] == ["U053__127.0.0.1__GO.png"]
     assert all(p.stat().st_size > 1000 for p in prints)
 
 
@@ -196,7 +194,7 @@ def test_print_apagado_e_refeito_no_rerun(loja):
     etapa2_plano.gerar_plano()
     _coletar()
 
-    Path("data/output/prints/UTENSILIOS/U053__127.0.0.1__DF.png").unlink()
+    Path("data/output/prints/UTENSILIOS/U053__127.0.0.1__GO.png").unlink()
 
     [segunda] = _coletar()
     assert segunda["gravados"] == 1
@@ -213,13 +211,45 @@ def test_entrega_sai_com_as_16_colunas_e_os_prints_embutidos(loja):
     resumo = montar_entrega.montar(
         Path("data/coletas"), Path("data/output"), ["UTENSILIOS"]
     )
-    assert resumo["linhas"] == 2
+    assert resumo["linhas"] == 1
 
     ws = load_workbook("data/output/UTENSILIOS.xlsx").active
     assert [c.value for c in ws[1]] == montar_entrega.COLUNAS
-    assert ws.max_row == 3  # cabeçalho + 2 UFs
-    assert len(ws._images) == 2  # uma miniatura por linha
+    assert ws.max_row == 2  # cabeçalho + GO
+    assert len(ws._images) == 1  # uma miniatura por linha
 
-    ufs = {ws.cell(row=n, column=montar_entrega.COLUNAS.index("UF") + 1).value
-           for n in (2, 3)}
-    assert ufs == {"GO", "DF"}
+    coluna = {nome: n + 1 for n, nome in enumerate(montar_entrega.COLUNAS)}
+    assert ws.cell(row=2, column=coluna["UF"]).value == "GO"
+    # Sede fora de GO: o frete para GO entra somado no PREÇO FINAL.
+    assert ws.cell(row=2, column=coluna["VALOR FRETE"]).value == 24.9
+    assert ws.cell(row=2, column=coluna["PREÇO FINAL"]).value == 214.8
+
+
+@sem_navegador
+def test_sede_em_go_coleta_sem_frete_e_entra_so_com_o_preco(loja):
+    """Regra de 09/10/2026: sede em GO não calcula frete nem soma nada."""
+    from openpyxl import load_workbook
+
+    from src.core.frete import FRETE_DISPENSADO
+
+    forn = tabelas.ler_fornecedores(apenas_aprovados=False)["127.0.0.1"]
+    forn.uf = "GO"
+    tabelas.gravar_fornecedores([forn])
+
+    _varrer()
+    etapa2_plano.gerar_plano()
+    [resultado] = _coletar()
+    assert resultado["gravados"] == 1
+
+    registro = json.loads(
+        Path("data/coletas/127.0.0.1.jsonl").read_text(encoding="utf-8").splitlines()[0]
+    )
+    assert registro["valor_frete"] is None
+    assert registro["obs_frete"] == FRETE_DISPENSADO
+    assert Path(registro["caminho_print"]).exists()
+
+    montar_entrega.montar(Path("data/coletas"), Path("data/output"), ["UTENSILIOS"])
+    ws = load_workbook("data/output/UTENSILIOS.xlsx").active
+    coluna = {nome: n + 1 for n, nome in enumerate(montar_entrega.COLUNAS)}
+    assert ws.cell(row=2, column=coluna["PREÇO FINAL"]).value == 189.9
+    assert ws.cell(row=2, column=coluna["VALOR FRETE"]).value is None

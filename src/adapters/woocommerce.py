@@ -78,16 +78,9 @@ class WooExecutor(Executor):
             preco_lista=regular,
         )
 
-    def detalhar(self, url_produto: str) -> ProdutoBruto:
-        """A listagem da Store API já traz preço confiável.
-
-        Sobrescrever isto só vale se a loja usar plugin de preço
-        dinâmico, em que a listagem e a página divergem.
-        """
-        raise NotImplementedError(
-            "WooCommerce: usar o produto da busca, ou implementar a leitura "
-            "de /wp-json/wc/store/v1/products/{id} para esta loja"
-        )
+    # detalhar() e cotar_frete() vêm do Executor: a Store API não tem
+    # cotação de frete sem carrinho, e o preço tem que ser o da página
+    # que o print fotografa.
 
 
 def _para_real(valor, escala: float) -> float | None:

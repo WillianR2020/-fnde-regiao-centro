@@ -219,7 +219,7 @@ def _png_minimo() -> bytes:
 def test_monta_a_planilha_com_as_16_colunas(projeto):
     from openpyxl import load_workbook
 
-    _coletar(projeto, "loja-a.com.br", "U001", "PR", 49.9)
+    _coletar(projeto, "loja-a.com.br", "U001", "GO", 49.9)
 
     resumo = montar_entrega.montar(
         projeto / "data/coletas", projeto / "data/output", ["UTENSILIOS"]
@@ -238,7 +238,7 @@ def test_monta_a_planilha_com_as_16_colunas(projeto):
 
 def test_monta_com_a_coleta_pela_metade_e_registra_a_pendencia(projeto):
     """Rodar isto no primeiro site coletado é o ponto da etapa."""
-    _coletar(projeto, "loja-a.com.br", "U001", "PR", 49.9)
+    _coletar(projeto, "loja-a.com.br", "U001", "GO", 49.9)
 
     resumo = montar_entrega.montar(
         projeto / "data/coletas", projeto / "data/output", ["UTENSILIOS"]
@@ -254,7 +254,7 @@ def test_a_entrega_nunca_repete_fornecedor_no_mesmo_item_e_uf(projeto):
     from openpyxl import load_workbook
 
     for numero in range(3):
-        _coletar(projeto, "loja-a.com.br", "U001", "PR", 40.0 + numero)
+        _coletar(projeto, "loja-a.com.br", "U001", "GO", 40.0 + numero)
 
     montar_entrega.montar(
         projeto / "data/coletas", projeto / "data/output", ["UTENSILIOS"]
@@ -319,3 +319,31 @@ def test_por_padrao_ainda_garimpa_no_site(cliente_falso):
     validar(forn, cliente)
 
     assert cliente.pedidos          # tentou ler o site
+
+
+def test_frete_a_coletar_sai_marcado_e_com_formula(projeto):
+    """Fora de GO, calculadora no site, valor não lido: a linha sai na
+    planilha com VALOR FRETE em branco e PREÇO FINAL somando o que for
+    digitado ali."""
+    import json
+
+    from openpyxl import load_workbook
+
+    from src.core.frete import FRETE_A_COLETAR
+
+    _coletar(projeto, "loja-a.com.br", "U001", "GO", 49.9)
+    arquivo = projeto / "data/coletas/loja-a.com.br.jsonl"
+    registro = json.loads(arquivo.read_text(encoding="utf-8").splitlines()[0])
+    registro.update(valor_frete=None, obs_frete=f"{FRETE_A_COLETAR}: a pagina tem calculadora")
+    arquivo.write_text(json.dumps(registro) + "\n", encoding="utf-8")
+
+    resumo = montar_entrega.montar(
+        projeto / "data/coletas", projeto / "data/output", ["UTENSILIOS"]
+    )
+    assert resumo["frete_a_coletar"] == 1
+
+    ws = load_workbook(projeto / "data/output/UTENSILIOS.xlsx").active
+    col = {nome: n for n, nome in enumerate(montar_entrega.COLUNAS, start=1)}
+    assert ws.cell(2, col["VALOR FRETE"]).value is None
+    assert ws.cell(2, col["PREÇO FINAL"]).value == "=49.9+N(N2)"
+    assert ws.cell(2, col["OBS FRETE"]).value.startswith("FRETE A COLETAR")

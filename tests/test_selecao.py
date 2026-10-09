@@ -60,14 +60,17 @@ def test_print_que_nao_esta_no_disco_nao_serve(print_valido):
 
 def test_registro_com_frete_em_aberto_nao_serve(print_valido):
     c = candidato(print_valido, "a.com.br", valor_frete=None, obs_frete="")
-    assert problema(c) == "frete não resolvido"
+    assert "não confirmada" in problema(c)
 
 
-def test_frete_nulo_com_observacao_serve(print_valido):
-    """Frete sob consulta é um resultado legítimo, desde que registrado."""
-    c = candidato(print_valido, "a.com.br", valor_frete=None,
-                  obs_frete="sob consulta: só por telefone")
-    assert problema(c) == ""
+def test_frete_nulo_so_serve_para_sede_em_go(print_valido):
+    """Desde 09/10/2026: sede em GO dispensa frete; de fora, sob consulta não basta."""
+    de_fora = candidato(print_valido, "a.com.br", valor_frete=None,
+                        obs_frete="sob consulta: só por telefone")
+    assert "não confirmada" in problema(de_fora)
+    em_go = candidato(print_valido, "b.com.br", valor_frete=None,
+                      obs_frete="frete nao calculado", uf_sede="GO")
+    assert problema(em_go) == ""
 
 
 def test_score_baixo_nao_serve(print_valido):

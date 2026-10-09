@@ -23,9 +23,10 @@ from collections import defaultdict
 from pathlib import Path
 
 from src.core import tabelas
-from src.core.frete import houve_recusa
+from src.core.frete import frete_possivel_de_coletar, houve_recusa, sede_na_uf_da_pesquisa
 from src.core.log import obter
 from src.export.prints import caminho_miniatura, embutir, gerar_miniatura
+from src.models import CEPS_CENTRO, UF_PESQUISA
 
 log = obter(__name__)
 
@@ -63,16 +64,18 @@ def problema(candidato: dict) -> str:
     if not Path(caminho).exists():
         return "print não está no disco"
 
-    obs_frete = (candidato.get("obs_frete") or "").strip()
-    if candidato.get("valor_frete") in (None, ""):
-        if not obs_frete:
-            return "frete não resolvido"
-        # Frete sob consulta é resultado legítimo e entra com observação.
-        # "Não entrega neste CEP" não é: é o fornecedor dizendo que a
-        # linha não existe. Passou a ser o descarte mais comum desde que
-        # a lista deixou de se limitar à região da pesquisa e a SP.
-        if houve_recusa(obs_frete):
-            return "fornecedor não entrega nesta UF"
+    # Regra da SEAD-GO de 09/10/2026: sede em GO entra sem frete; sede
+    # fora de GO só entra com a entrega em GO confirmada por uma cotação.
+    # "Sob consulta" deixou de bastar -- não prova que a empresa entrega.
+    # Exceção: a loja tem calculadora de frete e só o robô não leu o
+    # valor. A linha entra marcada FRETE A COLETAR (ver frete_a_coletar).
+    if not sede_em_go(candidato):
+        obs_frete = (candidato.get("obs_frete") or "").strip()
+        if candidato.get("valor_frete") in (None, ""):
+            if houve_recusa(obs_frete):
+                return f"fornecedor não entrega em {UF_PESQUISA}"
+            if not frete_possivel_de_coletar(obs_frete):
+                return f"entrega em {UF_PESQUISA} não confirmada (sede fora de {UF_PESQUISA})"
 
     if _numero(candidato.get("score_match")) < SCORE_MINIMO:
         return f"score {_numero(candidato.get('score_match')):.2f} abaixo do mínimo"
@@ -80,11 +83,37 @@ def problema(candidato: dict) -> str:
     return ""
 
 
+def frete_a_coletar(candidato: dict) -> bool:
+    """Sede fora de GO, sem valor de frete, mas a loja calcula frete: falta coletar à mão."""
+    return (not sede_em_go(candidato)
+            and candidato.get("valor_frete") in (None, "")
+            and frete_possivel_de_coletar(candidato.get("obs_frete")))
+
+
+def sede_em_go(candidato: dict) -> bool:
+    """`sede_go` vem do master (montar() anota); sem ele, a sede gravada na coleta."""
+    if candidato.get("sede_go") is not None:
+        return bool(candidato["sede_go"])
+    return sede_na_uf_da_pesquisa(candidato.get("uf_sede"))
+
+
+def preco_total(candidato: dict) -> float | None:
+    """O PREÇO FINAL da entrega: produto, mais o frete para GO se a sede é de fora."""
+    preco = _numero_ou_nada(candidato.get("preco_final") or candidato.get("preco_produto"))
+    if preco is None:
+        return None
+    if sede_em_go(candidato):
+        return preco
+    frete = _numero_ou_nada(candidato.get("valor_frete"))
+    return round(preco + (frete or 0.0), 2)
+
+
 def escolher_cinco(candidatos: list[dict]) -> tuple[list[dict], list[dict]]:
     """Os 5 que vão para a entrega e os que sobram para a reserva.
 
     Critério, nessa ordem: descarta o que não serve; um registro por
-    domínio; maior score_match; depois menor preço final.
+    domínio; linha completa antes de linha com FRETE A COLETAR (esta só
+    ocupa vaga que sobrou); maior score_match; depois menor preço final.
 
     A reserva vai para data/interim/reserva.csv e fica só no repositório.
     Ela carrega o motivo de cada exclusão -- sem isso, "por que este
@@ -102,7 +131,7 @@ def escolher_cinco(candidatos: list[dict]) -> tuple[list[dict], list[dict]]:
 
     ordenados = sorted(
         validos,
-        key=lambda c: (-_numero(c.get("score_match")), _preco(c)),
+        key=lambda c: (frete_a_coletar(c), -_numero(c.get("score_match")), _preco(c)),
     )
 
     escolhidos: list[dict] = []
@@ -159,6 +188,12 @@ def montar(entrada: Path, saida: Path, categorias: list[str] | None = None) -> d
         item = itens.get(c.get("id_item", ""))
         if item is None:
             continue  # item de outra categoria, ou removido da lista
+        if c.get("uf", "") not in CEPS_CENTRO:
+            continue  # coleta de UF que saiu da pesquisa (DF, até 09/10/2026)
+        forn = fornecedores.get(c.get("dominio", ""))
+        # A sede do master (Receita) ganha da gravada na coleta.
+        uf_sede = forn.uf if forn and forn.uf else c.get("uf_sede")
+        c = {**c, "sede_go": sede_na_uf_da_pesquisa(uf_sede)}
         grupos[(item.categoria, item.id_item, c.get("uf", ""))].append(c)
 
     reserva_geral: list[dict] = []
@@ -169,13 +204,16 @@ def montar(entrada: Path, saida: Path, categorias: list[str] | None = None) -> d
         escolhidos, reserva = escolher_cinco(candidatos)
         reserva_geral.extend(reserva)
 
-        if len(escolhidos) < ALVO_POR_ITEM:
+        a_coletar = sum(1 for c in escolhidos if frete_a_coletar(c))
+        if len(escolhidos) < ALVO_POR_ITEM or a_coletar:
             pendencias.append({
                 "categoria": categoria,
                 "id_item": id_item,
                 "uf": uf,
                 "fornecedores": len(escolhidos),
                 "faltam": ALVO_POR_ITEM - len(escolhidos),
+                # Estão na planilha, mas o VALOR FRETE é preenchido à mão.
+                "frete_a_coletar": a_coletar,
                 "candidatos_descartados": len(reserva),
             })
 
@@ -201,6 +239,8 @@ def montar(entrada: Path, saida: Path, categorias: list[str] | None = None) -> d
 
         for numero, (coleta, linha) in enumerate(linhas, start=2):
             ws.append([linha.get(c) for c in COLUNAS])
+            if frete_a_coletar(coleta):
+                _marcar_frete_a_coletar(ws, numero, coleta)
             _embutir_print(ws, numero, coluna_print, coleta)
 
         _ajustar_larguras(ws)
@@ -216,12 +256,14 @@ def montar(entrada: Path, saida: Path, categorias: list[str] | None = None) -> d
         "linhas": sum(len(v) for v in linhas_por_categoria.values()),
         "planilhas": gerados,
         "reserva": len(reserva_geral),
-        "pendencias": len(pendencias),
+        "pendencias": sum(1 for p in pendencias if p["faltam"] > 0),
+        "frete_a_coletar": sum(p["frete_a_coletar"] for p in pendencias),
     }
     print(
         f"[montar] {resumo['linhas']} linhas em {len(gerados)} planilha(s); "
         f"{resumo['reserva']} na reserva; "
-        f"{resumo['pendencias']} combinações item/UF ainda sem 5 fornecedores"
+        f"{resumo['pendencias']} combinações item/UF ainda sem 5 fornecedores; "
+        f"{resumo['frete_a_coletar']} linha(s) com FRETE A COLETAR à mão"
     )
     return resumo
 
@@ -241,11 +283,38 @@ def _linha(coleta: dict, item, fornecedores: dict) -> dict:
         "Preço PRODUTO": _numero_ou_nada(coleta.get("preco_produto")),
         "VALOR DESCONTO": _numero_ou_nada(coleta.get("valor_desconto")),
         "OBS Desconto": coleta.get("obs_desconto", ""),
-        "PREÇO FINAL": _numero_ou_nada(coleta.get("preco_final")),
-        "VALOR FRETE": _numero_ou_nada(coleta.get("valor_frete")),
+        # Produto (já com desconto) + frete para GO quando a sede é de
+        # fora. Sede em GO: só o produto, e VALOR FRETE fica vazio.
+        "PREÇO FINAL": preco_total(coleta),
+        "VALOR FRETE": (None if sede_em_go(coleta)
+                        else _numero_ou_nada(coleta.get("valor_frete"))),
         "OBS FRETE": coleta.get("obs_frete", ""),
         "PRINT": "",  # a imagem entra ancorada; o texto ficaria atrás dela
     }
+
+
+def _marcar_frete_a_coletar(ws, numero: int, coleta: dict) -> None:
+    """Linha de fora de GO cujo frete o robô não leu, mas a loja calcula.
+
+    VALOR FRETE fica em branco e amarelo para alguém preencher com o
+    CEP de GO; PREÇO FINAL vira fórmula, então soma o frete sozinho
+    assim que ele for digitado.
+    """
+    from openpyxl.styles import Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    amarelo = PatternFill("solid", fgColor="FFEB9C")
+    col = {nome: n for n, nome in enumerate(COLUNAS, start=1)}
+    frete = get_column_letter(col["VALOR FRETE"])
+    preco = _numero_ou_nada(coleta.get("preco_final") or coleta.get("preco_produto")) or 0
+
+    ws.cell(numero, col["PREÇO FINAL"], f"={preco}+N({frete}{numero})").fill = amarelo
+    ws.cell(numero, col["VALOR FRETE"]).fill = amarelo
+    obs = ws.cell(numero, col["OBS FRETE"],
+                  f"FRETE A COLETAR: o site calcula frete, mas o robô não leu o valor. "
+                  f"Preencher VALOR FRETE com o CEP {CEPS_CENTRO[UF_PESQUISA]}.")
+    obs.fill = amarelo
+    obs.font = Font(bold=True)
 
 
 def _embutir_print(ws, linha: int, coluna: int, coleta: dict) -> None:
@@ -306,8 +375,8 @@ def _numero_ou_nada(valor):
 
 
 def _preco(candidato: dict) -> float:
-    preco = candidato.get("preco_final") or candidato.get("preco_produto")
-    valor = _numero(preco)
+    """Para desempate: o que a SEAD-GO paga de fato, frete incluído."""
+    valor = preco_total(candidato) or 0.0
     return valor if valor > 0 else float("inf")
 
 

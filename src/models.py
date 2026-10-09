@@ -35,13 +35,17 @@ class ModoFrete(StrEnum):
     SOB_CONSULTA = "SOB_CONSULTA"
 
 
-# CEPs de referência, um por UF da pesquisa (Região Centro: GO e DF).
-# Definidos pela equipe para o cálculo de frete (conferidos no ViaCEP):
+# UF da pesquisa. Desde 09/10/2026 a SEAD-GO pede 5 preços por item só
+# para Goiás; o Distrito Federal saiu da pesquisa.
+UF_PESQUISA = "GO"
+
+# CEPs de referência, um por UF da pesquisa. Definido pela equipe para o
+# cálculo de frete (conferido no ViaCEP):
 #   GO  74933-130  Rua Monte Carmelo, Cardoso, Aparecida de Goiânia
-#   DF  70830-020  Quadra SGAN 601 Módulo J, Asa Norte, Brasília
+# O nome continua CEPS_CENTRO para não quebrar quem já importa; o DF
+# (70830-020) saiu em 09/10/2026.
 CEPS_CENTRO: dict[str, str] = {
-    "GO": "74933130",
-    "DF": "70830020",
+    UF_PESQUISA: "74933130",
 }
 
 
@@ -65,9 +69,10 @@ class Fornecedor:
     nome: str
     dominio: str  # CHAVE PRIMÁRIA — normalizada
     url_base: str
-    # UF da SEDE, para referência — não é critério. Fornecedor de
-    # qualquer estado entra, desde que entregue em GO ou DF e passe no
-    # CNAE/CNPJ. Quem decide é `entrega_centro`, não este campo.
+    # UF da SEDE, a do CNPJ consultado na Receita. Decide o frete, não a
+    # aprovação: sede em GO dispensa o cálculo de frete; sede fora de GO
+    # só entra com entrega em GO confirmada (`entrega_centro`) e tem o
+    # frete somado ao preço.
     uf: str
     cnpj: str | None = None  # só dígitos, 14 chars
     cnae_principal: str | None = None
@@ -75,9 +80,9 @@ class Fornecedor:
     situacao_cadastral: str | None = None
     eh_atacadista: bool | None = None
     flag_atacarejo: bool = False
-    # {"GO": True, "DF": False}. Só traz a UF sobre a qual houve
-    # resposta: UF ausente é "não deu para saber", não é "não entrega".
-    # É este campo, e não a UF da sede, que aprova ou reprova.
+    # {"GO": True}. Só traz a UF sobre a qual houve resposta: UF ausente
+    # é "não deu para saber", não é "não entrega". Para quem tem sede
+    # fora de GO, é este campo que aprova ou reprova.
     entrega_centro: dict[str, bool] = field(default_factory=dict)
     plataforma: Plataforma = Plataforma.DESCONHECIDA
     modo_frete: ModoFrete | None = None

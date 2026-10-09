@@ -63,7 +63,6 @@ MAX_PRODUTOS = 30
 # buscando nada -- devolve a vitrine. Uma loja Magento real respondeu as
 # mesmas 20 botinas para "panela" e para "tabua de corte".
 TERMO_IMPOSSIVEL = "zzqxwv"
-LARGURA, ALTURA = 1366, 900
 
 # Ordem de tentativa do campo de busca: nome exato antes de nome que só
 # contém, e atributo estável (type, name) antes de placeholder, que muda
@@ -76,6 +75,7 @@ SELETORES_BUSCA = (
     "input[name='busca']",
     "input[name='search']",
     "input[name='palavra']",
+    "input[name='palavra_busca']",  # Tray: /loja/busca.php?palavra_busca=
     "input[name*='busca' i]",
     "input[name*='pesquis' i]",
     "input[name*='search' i]",
@@ -305,13 +305,9 @@ class PlaywrightExecutor(Executor):
     # --- ciclo de vida ------------------------------------------------------
 
     def abrir(self) -> None:
-        from src.export.captura import obter_navegador
+        from src.export.captura import novo_contexto
 
-        navegador = obter_navegador()
-        self._contexto = navegador.new_context(
-            viewport={"width": LARGURA, "height": ALTURA},
-            locale="pt-BR",
-        )
+        self._contexto = novo_contexto()
         self._pagina = self._contexto.new_page()
         log.info("%s: navegador aberto", self.fornecedor.dominio)
 

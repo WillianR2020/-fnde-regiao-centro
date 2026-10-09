@@ -7,7 +7,7 @@ edite aqui, nunca lá. O guia para humanos é o `README.md`. `docs/GUIA.md` e
 `docs/ESTRUTURA.md` vêm da versão Sul e podem estar desatualizados: em caso
 de divergência, vale este arquivo e o código.
 
-Este repositório é a adaptação para a **Região Centro (GO e DF)** do
+Este repositório é a adaptação para **Goiás** (a pesquisa nasceu como Região Centro, GO e DF; o DF saiu em 09/10/2026) do
 `cosmic-axolotl/sul-scrapers` (Região Sul), com histórico próprio. As seções
 abaixo foram herdadas e ajustadas; números e nomes de loja citados como
 exemplo histórico ("89 sites", "132 itens") são da rodada Sul.
@@ -16,13 +16,49 @@ exemplo histórico ("89 sites", "132 itens") são da rodada Sul.
 
 Planilha de preços dos 124 itens da **Pesquisa SEAD-GO de Limpeza Predial**
 (`data/raw/Pesquisa_SEAD_GO_Limpeza_Predial.xlsx`, aba "Solicitação itens"),
-coletados no **atacado**, com **5 preços por item e por UF** (**GO e DF**), de
+coletados no **atacado**, com **5 preços por item para Goiás (GO)**, de
 **5 fornecedores distintos** por item. 120 itens na coleta automática (até
-1.200 linhas) e 4 na manual. Prazo: **a definir**.
+600 linhas) e 4 na manual. Prazo: **a definir**.
 
-As UFs e os CEPs de frete moram num lugar só, `CEPS_CENTRO` em
-`src/models.py`: GO 74933-130 (Aparecida de Goiânia) e DF 70830-020
-(Brasília), definidos pela equipe. `UFS_CENTRO` (etapa 1) deriva dele.
+**Regra de 09/10/2026:** o Distrito Federal saiu da pesquisa. Só GO conta,
+e a sede do fornecedor decide o frete:
+
+| Sede do fornecedor | Frete | PREÇO FINAL | Entra quando |
+|---|---|---|---|
+| em GO | não é calculado (`FRETE_DISPENSADO`) | preço do produto | sempre (passou no CNAE) |
+| fora de GO | cotado para o CEP de GO | produto + frete para GO | a entrega em GO foi **confirmada** por cotação |
+
+Fornecedor de fora de GO com frete "sob consulta", sem cotação ou com
+recusa **não entra**: não há como confirmar que ele entrega no estado.
+
+**Preço aberto é obrigatório.** Site que só mostra preço com login ou
+cadastro é ignorado, mesmo passando no CNAE (decisão de 09/10/2026). Na
+coleta, `pagina_produto.preco_exige_cadastro` recusa a página ("Faça seu
+login ou cadastre-se para ver preços"); no master, a decisão fica em
+`data/raw/correcoes.csv` (dominio, status, motivo, decidido_em), que a
+etapa 1 aplica em toda rodada (`aplicar_correcoes`) para a revalidação
+não desfazê-la. Goiás Atacado e Atacadão da Limpeza BSB estão lá.
+
+Exceção: **frete possível de coletar**. Se a página tem calculadora de
+frete (o CEP entrou) mas o robô não leu o valor, ou a simulação VTEX
+falhou, a observação leva `FRETE_A_COLETAR` e o registro é salvo. Na
+entrega a linha sai em amarelo, com VALOR FRETE em branco para alguém
+preencher e PREÇO FINAL como fórmula (`=preço+N(VALOR FRETE)`). Ela só
+ocupa vaga que as linhas completas deixaram, e conta em
+`pendencias.csv` (coluna `frete_a_coletar`).
+
+A entrega sai em 3 planilhas, uma por grupo de insumo (a categoria bate
+um a um): MATERIAIS DE CONSUMO = LIMPEZA E HIGIENE (56), FERRAMENTAS E
+EQUIPAMENTOS = LIMPEZA PREDIAL (48), EPIS E UNIFORMES = EPI / UNIFORME
+(16). PASSAGEM e SAÚDE OCUPACIONAL ficam fora: não há preço de vitrine. A
+sede é a UF do CNPJ na Receita (`validar()` grava em `Fornecedor.uf`);
+UF em branco conta como fora de GO.
+
+A UF e o CEP de frete moram num lugar só, `src/models.py`: `UF_PESQUISA`
+("GO") e `CEPS_CENTRO` (GO 74933-130, Aparecida de Goiânia). O nome
+`CEPS_CENTRO` ficou para não quebrar quem importa. `UFS_CENTRO` (etapa 1)
+deriva dele. Coletas antigas de DF em `data/coletas/` são ignoradas pelo
+montador.
 
 Fornecedores entram por `data/raw/leads/`: primeiro as sugestões da própria
 pesquisa (`sugestoes_sead_go.csv`), depois a `lista_sites.xlsx` herdada da
@@ -35,12 +71,12 @@ Template de saída: `data/raw/FNDE_output.xlsx` (15 colunas) + uma 16ª coluna `
 1. **Só entra fornecedor com CNAE principal na divisão 46** (atacado). Divisão 47 com 46 secundário entra com `flag_atacarejo = SIM`. Situação cadastral diferente de ATIVA reprova.
    **Exceção decidida pelo grupo do Sul em 23/09/2026 (herdada; confirmar se vale para a SEAD-GO):** as classes **47.53-9** (eletrodomésticos e equipamentos de áudio e vídeo) e **47.59-8** (artigos de uso doméstico n.e.) entram mesmo **sem** CNAE 46 secundário, também com `flag_atacarejo = SIM`. O motivo é a categoria EQUIPAMENTO — fogão industrial, freezer e balança são vendidos por loja registrada nessas classes, e reprová-las deixava a categoria sem fornecedor para os 5 preços por item. A lista está em `CLASSES_VAREJO_ACEITAS`, comparada por classe (5 dígitos), então pega 4759-8/01 e 4759-8/99 de uma vez.
    **Quem só entrou pela exceção só é varrido no canal `--varejista`** (ver "Dois canais" abaixo): uma loja de eletrodoméstico não é fonte de EPI nem de uniforme.
-2. **A UF da sede não é critério; entregar na Região Centro é.** Fornecedor de qualquer estado entra, desde que entregue em GO ou DF e passe no CNAE/CNPJ. Quem decide é `entrega_centro`, e reprovação exige **recusa** da loja em todas as UFs da pesquisa — timeout ou site fora do ar deixa PENDENTE, não reprova.
+2. **Atender Goiás é critério; a sede decide como se prova.** Sede em GO atende GO e dispensa o frete. Sede em outro estado entra só com entrega em GO confirmada por cotação, e o frete é somado ao preço. Na etapa 1, reprovação exige **recusa** da loja — timeout ou site fora do ar deixa PENDENTE; na montagem, linha de fora de GO sem frete cotado não entra.
 3. **Nenhum site é coletado sem estar em `data/interim/fornecedores_master.csv` com status APROVADO.**
 4. **O site é a unidade de execução**, não o item nem a categoria. Um processo por domínio, sempre.
 5. **Coleta e montagem são programas separados.** O coletor não conhece o template do FNDE; o montador não abre navegador.
 6. **Marca e fabricante não entram no pipeline.** O critério é aderência à descrição, medida por score.
-7. **Print é requisito**, tirado depois de preencher o CEP, com o frete visível na mesma imagem.
+7. **Print é requisito.** Fornecedor de fora de GO: tirado depois de preencher o CEP de GO, com o frete visível na mesma imagem. Sede em GO: print da página do produto, sem CEP.
 
 ## Contrato de dados
 
@@ -62,7 +98,7 @@ class Fornecedor:
     situacao_cadastral: str | None
     eh_atacadista: bool | None
     flag_atacarejo: bool
-    entrega_centro: dict[str, bool]  # {"GO": True, "DF": False}; UF ausente = não deu para saber
+    entrega_centro: dict[str, bool]  # {"GO": True}; UF ausente = não deu para saber
     plataforma: Plataforma    # vtex|woocommerce|nuvemshop|shopify|tray|magento|desconhecida
     modo_frete: ModoFrete | None
     status: Status            # APROVADO | REPROVADO | PENDENTE
@@ -288,6 +324,17 @@ loja real "SOBRE NÓS" e "Talheres de Mesa" entraram como produto. A
 conversão para `ProdutoBruto` é função pura e é o que os testes
 exercitam; nenhum teste sobe navegador.
 
+Na coleta, todo executor sem API de ficha e de frete (hoje, todos menos
+o VTEX) lê preço, estoque e frete **na página do produto**, pelo
+navegador (`src/core/pagina_produto.py`): JSON-LD primeiro, depois
+metatags, depois o texto da área de compra; o frete é a opção mais
+barata que aparece depois de preencher o CEP. Produto fora de estoque
+não entra na coleta. Cotação e print esperam o frete pela mesma rotina
+(`captura.preencher_e_esperar_frete`), então a imagem mostra o valor da
+planilha. Todo contexto do navegador sai de `captura.novo_contexto()`,
+com user-agent de Chrome comum: duas distribuidoras reais barravam o
+"HeadlessChrome" com 403.
+
 Loja que a heurística não pega **não é bug do genérico**: sobrescreva
 `SEL_BUSCA` ou `URL_BUSCA` numa subclasse. É para isso que os dois
 existem.
@@ -408,6 +455,11 @@ porque o fuzzy textual cobria a diferença. A escala de efeitos hoje:
 | item avulso e produto em pacote (preço de pacote na linha de 1 un) | no máximo `revisar` |
 | dimensão divergente | no máximo `revisar` |
 | dimensão ausente no título | só perde o bônus |
+
+Teor (`%`, `°`, `GL`, `INPM`) é uma família de dimensão como volume e
+massa, e **toda** família citada pelos dois lados tem que conferir: antes
+bastava uma, e "álcool 70% 5 L" passava por "álcool 54% 5 L" (SEAD-GO
+1001 e 1002) porque o volume batia.
 
 Embalagem divergente descarta porque não há leitura em que um pacote de 50
 atenda quem pediu 100. Dimensão divergente não descarta porque a lista usa
