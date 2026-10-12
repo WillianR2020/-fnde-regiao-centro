@@ -1,4 +1,10 @@
 id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
 1000,zipquimica.ind.br,https://zipquimica.ind.br/product/agua-sanitaria-5l/,Água Sanitária – 5L,0.923,10.67,2026-10-10T23:03:54,aceito,,485
+1011,zipquimica.ind.br,https://zipquimica.ind.br/product/desinfetante-5l/,Desinfetante – 5L,0.911,16.9,2026-10-12T14:56:47,aceito,,VT000020
+1012,zipquimica.ind.br,https://zipquimica.ind.br/product/agua-sanitaria-5l/,Água Sanitária – 5L,0.554,10.67,2026-10-12T14:56:53,revisar,,485
+1016,zipquimica.ind.br,https://zipquimica.ind.br/product/detergente-neutro-5l/,Detergente Neutro – 5L,0.735,22.88,2026-10-12T14:56:58,revisar,volume pedida [0.5] e o produto traz [5.0],240
 1017,zipquimica.ind.br,https://zipquimica.ind.br/product/detergente-neutro-concentrado-5l/,Detergente Neutro Concentrado – 5L,0.961,24.9,2026-10-10T23:04:56,aceito,,488
+1026,zipquimica.ind.br,https://zipquimica.ind.br/product/limpa-vidros-5l/,Limpa Vidros – 5L,0.6,20.9,2026-10-12T14:57:32,revisar,,250
 1027,zipquimica.ind.br,https://zipquimica.ind.br/product/limpa-vidros-5l/,Limpa Vidros – 5L,0.991,20.9,2026-10-10T23:05:36,aceito,,250
+1037,zipquimica.ind.br,https://zipquimica.ind.br/product/detergente-neutro-5l/,Detergente Neutro – 5L,0.733,22.88,2026-10-12T14:58:09,aceito,,240
+1040,zipquimica.ind.br,https://zipquimica.ind.br/product/limpador-perfumado-5l/,Limpador Perfumado Concentrado – 5L,0.63,35.9,2026-10-12T14:58:22,revisar,,VT000038
