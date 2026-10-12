@@ -1,0 +1,5 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1001,casadalimpeza.net,https://casadalimpeza.net/produto/sabao-liquido-para-roupas-deoline-5-litros/,Sabão líquido para roupas Deoline 5 litros,0.596,62.0,2026-10-12T12:16:09,revisar,,1743
+1014,casadalimpeza.net,https://casadalimpeza.net/produto/klyo-pine-detergente-desengraxante-5l/,Klyo pine detergente desengraxante 5L,0.92,149.0,2026-10-10T22:58:13,aceito,,1738
+1028,casadalimpeza.net,https://casadalimpeza.net/produto/chef-lima-limao-limpador-multiuso/,Chef Lima limão limpador multiuso,0.72,77.9,2026-10-10T22:59:12,aceito,,1806
+1093,casadalimpeza.net,https://casadalimpeza.net/produto/rodo-eco-40cm-c-cabo-14mts/,"Rodo Eco 40cm c/cabo 1,4mts",0.657,38.4,2026-10-10T22:56:34,aceito,,1756

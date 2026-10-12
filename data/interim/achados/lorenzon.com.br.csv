@@ -1,1 +1,6 @@
 id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1019,lorenzon.com.br,https://lorenzon.com.br/produto/esponja-dupla-face-lizon-2/,353 – Esponja dupla face Lizon,0.72,0.0,2026-10-11T07:21:15,aceito,,5903
+1033,lorenzon.com.br,https://lorenzon.com.br/produto/pano-prato-microfibra-estampado/,253 – Pano prato Microfibra estampado,0.72,0.0,2026-10-11T07:23:12,aceito,,5804
+1078,lorenzon.com.br,https://lorenzon.com.br/produto/espanador-colorido/,058 – Espanador nylon,0.514,0.0,2026-10-11T07:17:02,revisar,,5759
+1093,lorenzon.com.br,https://lorenzon.com.br/produto/rodo-madeira-40-cm/,093 – Rodo madeira 40 cm,0.7,0.0,2026-10-11T07:18:09,aceito,,5935
+1094,lorenzon.com.br,https://lorenzon.com.br/produto/097-rodo-60cm/,097 – Rodo 60cm,0.576,0.0,2026-10-11T07:18:12,revisar,,6404

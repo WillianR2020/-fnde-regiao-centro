@@ -1,0 +1,37 @@
+id_item,termo,motivo,decidido_em
+1001,alcool 54,teor no título costuma vir sem o símbolo,12/10/2026
+1001,alcool liquido 54,teor no título costuma vir sem o símbolo,12/10/2026
+1006,odorizador ambiente 5 l,lojas chamam de odorizador,12/10/2026
+1006,aromatizante ambiente,lojas chamam de aromatizante,12/10/2026
+1006,neutralizador odores,nome do uso na descrição,12/10/2026
+1013,desodorizador sanitario,sem o "líquido" o termo acha mais,12/10/2026
+1013,odorizador sanitario,lojas chamam de odorizador,12/10/2026
+1043,saco lixo 30 litros,"litros" por extenso no título,12/10/2026
+1049,saponaceo barra,nome técnico do sapólio,12/10/2026
+1049,sapolio,a busca por "barra" não casa,12/10/2026
+1073,aromatizador automatico,"aparelho aromatizador" nas lojas,12/10/2026
+1073,odorizador automatico,"aparelho odorizador" nas lojas,12/10/2026
+1073,aparelho aromatizador,nome usado nas lojas,12/10/2026
+1078,espanador cabo,nome usado nas lojas,12/10/2026
+1078,espanador pena,nome usado nas lojas,12/10/2026
+1079,extensao eletrica 30 metros,"metros" por extenso no título,12/10/2026
+1079,extensao 30 metros,"metros" por extenso no título,12/10/2026
+1087,mangueira 100 metros,"metros" por extenso no título,12/10/2026
+1087,mangueira jardim,nome usado nas lojas,12/10/2026
+1098,vassoura piacava,vassoura de cerda dura é a de piaçava,12/10/2026
+1098,vassoura nylon dura,nome usado nas lojas,12/10/2026
+1098,vassourao,vassoura de cerda dura para piso externo,12/10/2026
+1104,camiseta malha fria,nome usado nas lojas,12/10/2026
+1104,camiseta uniforme,nome usado nas lojas,12/10/2026
+1104,camiseta profissional,nome usado nas lojas,12/10/2026
+1106,meia algodao,nome usado nas lojas,12/10/2026
+1106,meia profissional,nome usado nas lojas,12/10/2026
+1107,botina seguranca,lojas chamam de botina,12/10/2026
+1107,bota seguranca,lojas chamam de bota,12/10/2026
+1107,sapato seguranca,lojas chamam de sapato,12/10/2026
+1107,tenis seguranca,lojas chamam de tênis,12/10/2026
+1114,respirador pff2,máscara descartável vendida por unidade,12/10/2026
+1114,mascara pff2,máscara descartável vendida por unidade,12/10/2026
+1118,touca arabe,nome usado nas lojas,12/10/2026
+1118,chapeu arabe,nome usado nas lojas,12/10/2026
+1118,bone arabe,sem "sombreiro" o termo acha mais,12/10/2026

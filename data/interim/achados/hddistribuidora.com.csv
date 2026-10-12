@@ -1,0 +1,22 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1001,hddistribuidora.com,https://hddistribuidora.com/produto/sabonete-liquido-erva-doce-soft-plus-5-litros/,Sabonete Líquido Erva Doce Soft Plus 5 Litros,0.612,61.0,2026-10-12T12:20:59,revisar,,4645
+1017,hddistribuidora.com,https://hddistribuidora.com/produto/cif-detergente-neutro-concentrado-7l/,Cif Detergente Neutro Concentrado 7L,0.72,246.0,2026-10-10T23:55:53,revisar,volume pedida [5.0] e o produto traz [7.0],122875
+1019,hddistribuidora.com,https://hddistribuidora.com/produto/esponja-dupla-face-com-10-unidades/,Esponja Dupla Face com 10 Unidades,0.72,19.0,2026-10-10T23:55:59,revisar,"item avulso, mas o produto vem em [10] peças",124729
+1027,hddistribuidora.com,https://hddistribuidora.com/produto/pratiko-multi-uso-e-limpa-vidros/,Pratiko Multi Uso E Limpa Vidros 5L,0.709,77.0,2026-10-10T23:56:40,aceito,,2867
+1028,hddistribuidora.com,https://hddistribuidora.com/produto/limpador-multiuso-cif-2l/,Cif Limpador Multiuso – 2L,0.72,69.0,2026-10-10T23:56:47,revisar,volume pedida [0.5] e o produto traz [2.0],1184
+1035,hddistribuidora.com,https://hddistribuidora.com/produto/xprofessional-dispenser-para-papel-higienico-rolao-duplo-el-roldbp/,Dispenser Para Papel Higiênico Rolão Duplo Xprofessional,0.72,0.0,2026-10-10T23:57:24,aceito,,2476
+1036,hddistribuidora.com,https://hddistribuidora.com/produto/papel-toalha-interfolhado-office-folha-simples-tis030b/,Papel Toalha Interfolhado Office Folha Simples TIS030B,0.72,220.0,2026-10-10T23:57:32,revisar,item exige [1000] peças e o título do produto não diz quantas vêm,125077
+1041,hddistribuidora.com,https://hddistribuidora.com/produto/sabonete-liquido-dove-profissional-nutricao-profunda-5l-copia/,Sabonete Líquido Dove Proffisional – Nutrição Profunda (5L),0.92,147.0,2026-10-10T23:58:02,aceito,,122527
+1042,hddistribuidora.com,https://hddistribuidora.com/produto/saco-lixo-20-lts-preto-39x050/,SACO LIXO PRETO 20 LTS – 100 UNIDADES,0.702,18.0,2026-10-10T23:58:16,aceito,,854
+1043,hddistribuidora.com,https://hddistribuidora.com/produto/saco-lixo-preto-105lts-eco-100-unidades-copia/,Saco Lixo Preto 105Lts  – 100 Unidades,0.633,83.0,2026-10-12T12:21:22,revisar,,122879
+1044,hddistribuidora.com,https://hddistribuidora.com/produto/saco-lixo-40-lts-preto-50x060/,SACO LIXO PRETO 40 LTS – 100 UNIDADES,0.702,26.0,2026-10-10T23:58:23,aceito,,732
+1045,hddistribuidora.com,https://hddistribuidora.com/produto/saco-lixo-60-lts-preto-60x070/,SACO LIXO PRETO 60 LTS – 100 UNIDADES,0.702,46.0,2026-10-10T23:58:26,aceito,,751
+1046,hddistribuidora.com,https://hddistribuidora.com/produto/saco-lixo-preto-105lts-reforcado-100-unidades/,Saco Lixo Preto 105Lts (Reforçado) – 100 Unidades,0.685,111.0,2026-10-10T23:58:33,aceito,,2483
+1047,hddistribuidora.com,https://hddistribuidora.com/produto/saco-lixo-100l-comum-pr75x090/,SACO LIXO PRETO 105LTS  ECO – 100 UNIDADES,0.642,49.0,2026-10-10T23:58:38,aceito,,799
+1048,hddistribuidora.com,https://hddistribuidora.com/produto/saco-lixo-preto-105lts-reforcado-100-unidades/,Saco Lixo Preto 105Lts (Reforçado) – 100 Unidades,0.682,111.0,2026-10-10T23:58:42,aceito,,2483
+1054,hddistribuidora.com,https://hddistribuidora.com/produto/disco-removedor-preto-bettanin/,Disco Removedor Preto,0.8,43.0,2026-10-10T23:59:09,aceito,,3936
+1091,hddistribuidora.com,https://hddistribuidora.com/produto/placa-sinalizadora-tts-cuidado-piso-molhado-caution-wet-floor/,Placa Sinalizadora  TTS – Cuidado Piso Molhado – Caution Wet Floor,0.72,120.0,2026-10-10T23:52:31,aceito,,4463
+1092,hddistribuidora.com,https://hddistribuidora.com/produto/placa-sinalizadora-tts-cuidado-piso-molhado-caution-wet-floor/,Placa Sinalizadora  TTS – Cuidado Piso Molhado – Caution Wet Floor,0.72,120.0,2026-10-10T23:52:33,aceito,,4463
+1093,hddistribuidora.com,https://hddistribuidora.com/produto/rodo-43cm-borracha-safpro/,Rodo 43cm Borracha SafPro,0.547,50.0,2026-10-10T23:52:38,revisar,comprimento pedida [0.4] e o produto traz [0.43],125296
+1094,hddistribuidora.com,https://hddistribuidora.com/produto/rodo-plastico-verde-com-borracha-dupla/,Rodo Plástico Verde Com Borracha Dupla,0.574,75.0,2026-10-10T23:52:40,revisar,,3115
+1098,hddistribuidora.com,https://hddistribuidora.com/produto/vassoura-flo/,Vassoura FLÓ,0.64,64.0,2026-10-12T12:37:42,aceito,,124803

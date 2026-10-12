@@ -1,0 +1,6 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1008,lojamundoazul.com.br,https://lojamundoazul.com.br/produto/limpador-selador-1-litro/,Limpador de Cera Acrílica e Selador 1L,0.652,96.0,2026-10-11T21:17:16,aceito,,93813010
+1029,lojamundoazul.com.br,https://lojamundoazul.com.br/produto/limpador-limpa-pedras-concentrado-1-litro/,Limpador Limpa Pedras Concentrado 1L,0.571,46.0,2026-10-11T21:17:44,revisar,volume pedida [5.0] e o produto traz [1.0],93813040
+1051,lojamundoazul.com.br,https://lojamundoazul.com.br/produto/limpador-selador-1-litro/,Limpador de Cera Acrílica e Selador 1L,0.522,96.0,2026-10-11T21:18:09,revisar,volume pedida [5.0] e o produto traz [1.0],93813010
+1080,lojamundoazul.com.br,https://lojamundoazul.com.br/produto/lavadora-de-alta-pressao-hd-585-profi-new/,Lavadora de Alta Pressão Karcher Profissional HD 585 Profi,0.72,3153.0,2026-10-11T21:18:36,aceito,,72897
+1082,lojamundoazul.com.br,https://lojamundoazul.com.br/produto/aspirador-de-po-e-liquidos-wdl-1-karcher-220v/,Aspirador de pó e líquidos WDL 1 Karcher,0.72,334.74,2026-10-11T21:18:40,aceito,,10983410

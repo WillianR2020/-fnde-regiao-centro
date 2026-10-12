@@ -1,1 +1,9 @@
 id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1027,plasthouse.com.br,https://plasthouse.com.br/produto/casa/limpeza/rodo-limpa-vidros-com-dispenser-bettanin/,Rodo Limpa Vidros Com Dispenser 225ml – Bettanin,0.488,29.9,2026-10-11T07:49:53,revisar,volume pedida [5.0] e o produto traz [0.225],RODBETLIM
+1066,plasthouse.com.br,https://plasthouse.com.br/produto/lixeiras/lixeira-plastica-de-25-litros-com-pedal/,Lixeira Plástica de 25L com Pedal para Coleta Seletiva – Plasútil,0.72,39.9,2026-10-11T07:46:17,revisar,volume pedida [8.0] e o produto traz [25.0],25LPLALIX
+1067,plasthouse.com.br,https://plasthouse.com.br/produto/lixeiras/lixeira-plastica-de-25-litros-com-pedal/,Lixeira Plástica de 25L com Pedal para Coleta Seletiva – Plasútil,0.72,39.9,2026-10-11T07:46:21,revisar,volume pedida [20.0] e o produto traz [25.0],25LPLALIX
+1075,plasthouse.com.br,https://plasthouse.com.br/produto/comercio/escadas/escada-aluminio-5-degraus-mor/,Escada de Alumínio 5 Degraus,0.624,182.5,2026-10-11T07:46:47,revisar,,CINMORESC
+1086,plasthouse.com.br,https://plasthouse.com.br/produto/casa/jardim/suporte-p-mangueira/,Suporte p/ Mangueira,0.514,22.9,2026-10-11T07:47:19,revisar,,SUPMANG
+1087,plasthouse.com.br,https://plasthouse.com.br/produto/casa/jardim/suporte-p-mangueira/,Suporte p/ Mangueira,0.514,22.9,2026-10-12T12:40:37,revisar,,SUPMANG
+1091,plasthouse.com.br,https://plasthouse.com.br/produto/comercio/sinalizadores/placa-sinalizadora/,Placa Sinalizadora,0.8,49.9,2026-10-11T07:47:33,aceito,,PLCSIN
+1092,plasthouse.com.br,https://plasthouse.com.br/produto/comercio/sinalizadores/placa-sinalizadora/,Placa Sinalizadora,0.8,49.9,2026-10-11T07:47:36,aceito,,PLCSIN
