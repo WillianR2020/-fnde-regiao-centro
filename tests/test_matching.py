@@ -210,3 +210,74 @@ def test_teor_igual_continua_aceito():
 
     assert avaliar(ALCOOL_54, "Álcool Etílico 54% 5 Litros").classificacao == "aceito"
     assert avaliar(ALCOOL_54, "Álcool 54 GL 5L").classificacao == "aceito"
+
+
+def test_ponto_de_milhar_nao_e_decimal():
+    """SEAD-GO 1082 pede "mínimo 1.600 W": era lido como 1,6 W."""
+    from src.core.matching import dimensoes
+
+    assert ("potencia", 1600.0) in dimensoes("ASPIRADOR DE PÓ – MÍNIMO 1.600 W")
+    assert ("volume", 1.0) in dimensoes("Detergente 1.000 ml")
+    assert ("volume", 1.5) in dimensoes("Refrigerante 1.5 l")
+    assert ("massa", 0.5) in dimensoes("Sabão 0.500 kg")
+
+
+def test_numero_de_degraus_e_medida():
+    """SEAD-GO 1074 pede 12 degraus; a escada de 3 entrava como aceita."""
+    from src.core.matching import avaliar, dimensoes
+
+    escada = "ESCADA ARTICULADA DE ALUMÍNIO – 12 DEGRAUS - USO PROFISSIONAL"
+    assert ("degraus", 12.0) in dimensoes(escada)
+    assert avaliar(escada, "Escada De Aluminio 3 Degraus").classificacao != "aceito"
+    assert avaliar(escada, "Escada Articulada Alumínio 12 Degraus").classificacao == "aceito"
+
+
+# ---------------------------------------------------------------------------
+# Nome do item (descrições "NOME - DETALHES; USO" da SEAD-GO), 09/10/2026
+# ---------------------------------------------------------------------------
+
+LUVA_PVC = "LUVA DE PVC - CANO MÉDIO OU LONGO; PARA ATIVIDADES DE LIMPEZA."
+BOTA = "BOTA DE PVC/BORRACHA - IMPERMEÁVEL, SOLADO ANTIDERRAPANTE, CANO MÉDIO OU LONGO."
+
+
+@pytest.mark.parametrize("descricao, titulo", [
+    (LUVA_PVC, "Luva PVC Cano Longo 46cm Verde"),
+    (BOTA, "Bota PVC Branca Cano Longo Impermeável"),
+    (BOTA, "Bota de Borracha Preta"),
+    ("ÓCULOS DE PROTEÇÃO INCOLOR - PARA MANIPULAÇÃO DE PRODUTOS QUÍMICOS.",
+     "Óculos de Proteção Incolor Kalipso"),
+    ("BONÉ ÁRABE/SOMBREIRO PARA PROTEÇÃO SOLAR - PARA SERVIÇOS EXTERNOS.",
+     "Boné Árabe Brim Cáqui"),
+])
+def test_titulo_com_o_nome_do_item_e_aceito(descricao, titulo):
+    """O uso na descrição puxava o produto certo para 'revisar' (60-78)."""
+    assert matching.avaliar(descricao, titulo).classificacao == "aceito"
+
+
+@pytest.mark.parametrize("descricao, titulo", [
+    (LUVA_PVC, "Luva Nitrílica Verde"),
+    ("AVENTAL DE PVC - IMPERMEÁVEL.", "Avental de Raspa de Couro"),
+    (BOTA, "Botina de Segurança Couro"),
+])
+def test_nome_do_item_incompleto_nao_e_aceito(descricao, titulo):
+    assert matching.avaliar(descricao, titulo).classificacao != "aceito"
+
+
+def test_nome_de_uma_palavra_nao_vale():
+    """'MEIA' sozinha casaria com 'meia luva'."""
+    assert matching.nome_do_item("MEIA - ALGODÃO/POLIAMIDA/ELASTANO; COR PRETA OU AZUL.") == []
+
+
+def test_nome_do_item_nao_atropela_medida_divergente():
+    """Teor e volume continuam valendo: o nome não destrava o 70% no lugar do 54%."""
+    a = matching.avaliar("ÁLCOOL ETÍLICO 54% LÍQUIDO - USO GERAL. EMBALAGEM: GALÃO 5 L",
+                         "Álcool Etílico Líquido 70% 5 Litros")
+    assert a.classificacao != "aceito"
+
+
+def test_botina_e_calcado_de_seguranca():
+    """O nome que a loja usa vale como o nome do item (SINONIMOS_DO_NOME)."""
+    desc = "CALÇADO DE SEGURANÇA ANTIDERRAPANTE - PROTEÇÃO CONTRA AGENTES MECÂNICOS; IMPERMEÁVEL QUANDO APLICÁVEL."
+    assert matching.avaliar(desc, "Botina de Segurança Bico de Composite Antiderrapante CA 40377").classificacao == "aceito"
+    # sinônimo não dispensa as outras palavras do nome
+    assert matching.avaliar(desc, "Bota de Borracha Cano Longo").classificacao != "aceito"

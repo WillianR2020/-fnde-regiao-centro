@@ -46,6 +46,39 @@ def test_sem_jsonld_le_o_texto_e_o_riscado():
     assert p.disponivel is False
 
 
+def test_de_por_sem_del_nao_vira_preco():
+    """PreveOeste: promoção sem <del>, só "De R$ 56,80" antes do preço."""
+    ficha = {
+        "jsonld": [{"@type": "Product", "name": "Rodo"}],  # sem offers
+        "titulo": "Rodo de espuma",
+        "preco_atual": "De R$ 56,80\nR$ 44,55\nou R$ 46,90 em 6 x R$ 7,82 sem juros",
+        "texto_area": "Rodo de espuma\nDe R$ 56,80\nR$ 44,55\nComprar",
+    }
+    p = produto_da_ficha(ficha, URL)
+    assert p.preco == 44.55
+    assert p.preco_lista == 56.80
+
+
+def test_de_economize_por_dutra():
+    """Dutra: o bloco de preço cola o valor cheio e o do PIX num texto só."""
+    ficha = {
+        "jsonld": [],
+        "titulo": "Rodo plástico 40 cm",
+        "preco_atual": "De R$ 23,41\n15% OFF\neconomize R$ 1,99\nPor R$ 17.9117,91",
+        "texto_area": "Rodo plástico 40 cm\nDe R$ 23,41\n15%\nOFF\neconomize R$ 1,99\n"
+                      "Por\xa0\xa0\xa0R$ 17,91\xa0\nDESCONTO DE 10%\nCOMPRAR",
+    }
+    p = produto_da_ficha(ficha, URL)
+    assert p.preco == 17.91
+    assert p.preco_lista == 23.41
+
+
+def test_a_partir_de_continua_sendo_preco():
+    ficha = {"jsonld": [], "titulo": "Balde", "preco_atual": "A partir de R$ 12,90",
+             "texto_area": "Balde\nComprar"}
+    assert produto_da_ficha(ficha, URL).preco == 12.90
+
+
 def test_pagina_sem_preco_levanta():
     with pytest.raises(RespostaInvalida):
         produto_da_ficha({"jsonld": [], "titulo": "x", "texto_area": "Consulte"}, URL)
@@ -131,3 +164,18 @@ def test_reconhece_preco_escondido_atras_de_cadastro(texto, esperado):
     from src.core.pagina_produto import preco_exige_cadastro
 
     assert preco_exige_cadastro(texto) is esperado
+
+
+def test_valor_em_linha_separada_do_nome_do_envio():
+    """Gimba: "Envio:" / "Transportadora" / "Valor:" / "R$ 77,36"."""
+    depois = ("Produto\nFrete para CEP\n74933-130\nEnvio:\nTransportadora\nValor:\nR$ 77,36\n"
+              "Prazo:\nEntrega em até 7 dia(s) úteis após liberação do pedido!")
+    valor, obs = frete_do_texto("Produto", depois)
+    assert valor == 77.36
+    assert "Transportadora" in obs
+
+
+def test_valor_puro_nao_herda_rotulo_de_outra_opcao():
+    valor, _ = frete_do_texto(
+        "Produto", "Produto\nRetirar na loja\nR$ 0,00\nPAC\nR$ 41,30")
+    assert valor == 41.30

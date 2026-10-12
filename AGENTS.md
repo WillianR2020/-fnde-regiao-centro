@@ -45,7 +45,26 @@ falhou, a observação leva `FRETE_A_COLETAR` e o registro é salvo. Na
 entrega a linha sai em amarelo, com VALOR FRETE em branco para alguém
 preencher e PREÇO FINAL como fórmula (`=preço+N(VALOR FRETE)`). Ela só
 ocupa vaga que as linhas completas deixaram, e conta em
-`pendencias.csv` (coluna `frete_a_coletar`).
+`pendencias.csv` (coluna `frete_a_coletar`). A retomada da coleta pula a
+linha amarela, que é completa para a entrega; depois de corrigir a
+leitura de frete de uma loja, `REFAZER_FRETE_A_COLETAR=1` faz a etapa 3
+tentar de novo só esses pares. O registro antigo fica no arquivo, e o
+montador prefere o novo quando o frete vem. `REFAZER_SEM_FRETE=1` faz o
+mesmo com o registro de fora de GO que ficou sem valor de frete
+("sob consulta"), para quando a loja ganha um caminho de cotação, e
+`REFAZER_TUDO=1` refaz todos os pares dos sites da rodada (depois de
+corrigir a leitura de preço de uma loja). Com dois registros do mesmo
+fornecedor para o item, o montador fica com o completo, o de maior
+score e, entre iguais, o mais recente -- não o mais barato.
+
+**Frete no carrinho.** Loja cuja ficha não tem calculadora, mas cujo
+carrinho de visitante cota o CEP, entra em `captura.FRETE_NO_CARRINHO`
+(domínio -> botão de adicionar, caminho do carrinho). Só para essas, a
+cotação e o print põem o produto no carrinho (sem conta, sem cadastro),
+preenchem o CEP lá e fotografam o carrinho, que mostra produto, preço e
+frete juntos. Lista conferida à mão: em qualquer outra loja, clicar em
+comprar continua proibido. Hoje: Shopping da Segurança (Magento/Hyvä,
+~20 s até a transportadora aparecer).
 
 A entrega sai em 3 planilhas, uma por grupo de insumo (a categoria bate
 um a um): MATERIAIS DE CONSUMO = LIMPEZA E HIGIENE (56), FERRAMENTAS E
@@ -320,18 +339,44 @@ outro lugar.
 
 A extração roda como JavaScript na página, porque só lá o DOM está
 montado, e ignora `nav`, `header`, `footer` e link de categoria — numa
-loja real "SOBRE NÓS" e "Talheres de Mesa" entraram como produto. A
+loja real "SOBRE NÓS" e "Talheres de Mesa" entraram como produto. Bloco
+que só tem "nav" ou "menu" no **nome da classe** descarta o link apenas
+quando não há preço perto dele: a Gimba embrulha a vitrine de resultados
+num `NavegaVitrine`, e a regra antiga jogava fora todos os produtos. A
 conversão para `ProdutoBruto` é função pura e é o que os testes
 exercitam; nenhum teste sobe navegador.
+
+A busca do WordPress compara acento, e os termos chegam sem acento: na
+Mundo Azul "lavadora pressao" dava zero. Quando a Store API devolve zero
+para um termo de várias palavras, o `WooExecutor` tenta de novo só com a
+palavra mais longa (`palavra_de_recuo`), e o matching filtra o resto.
 
 Na coleta, todo executor sem API de ficha e de frete (hoje, todos menos
 o VTEX) lê preço, estoque e frete **na página do produto**, pelo
 navegador (`src/core/pagina_produto.py`): JSON-LD primeiro, depois
 metatags, depois o texto da área de compra; o frete é a opção mais
 barata que aparece depois de preencher o CEP. Produto fora de estoque
-não entra na coleta. Cotação e print esperam o frete pela mesma rotina
+não entra na coleta. Produto com grade de variação (Loja Integrada: cor,
+espessura, quantidade) não calcula frete antes da escolha;
+`captura.escolher_variacoes` clica a primeira opção disponível de cada
+grade ao abrir a página, e preço, frete e print são os dessa variação. Cotação e print esperam o frete pela mesma rotina
 (`captura.preencher_e_esperar_frete`), então a imagem mostra o valor da
-planilha. Todo contexto do navegador sai de `captura.novo_contexto()`,
+planilha. CEP em dois campos (5 + 3 dígitos, Tray antiga) é preenchido
+nos dois; o botão de calcular também é reconhecido pela classe (`frete`,
+`simular`, `calcul`, como o `a.botao-simular-frete`), e botão de compra
+nunca é clicado como reserva -- antes, ele punha o produto no carrinho.
+Valor de frete em linha própria ("Envio:" / "Transportadora" / "Valor:" /
+"R$ 77,36", Gimba) herda o rótulo das linhas de cima que não têm preço.
+O campo de CEP espera 0,8 s entre a última tecla e o clique: campo com
+debounce (Hyvä) calculava com o CEP vazio.
+
+Preço lido do texto (sem JSON-LD nem metatag) segue três regras, porque
+loja sem `<del>` escreve "De R$ 23,41 … economize R$ 1,99 … Por R$
+17,91" e o primeiro valor era o riscado (Dutra, PreveOeste): "Por R$"
+ganha de tudo; sem ele, "De R$" e "economize R$" são ignorados; e o
+"De R$" vira o preço riscado. Valor só casa com milhar em grupos de 3:
+"R$ 17.9117,91" (dois spans colados) não é número.
+Todo contexto do navegador sai de `captura.novo_contexto()`,
 com user-agent de Chrome comum: duas distribuidoras reais barravam o
 "HeadlessChrome" com 403.
 
@@ -466,6 +511,33 @@ atenda quem pediu 100. Dimensão divergente não descarta porque a lista usa
 "mínimo", "máximo" e "aproximadamente" o tempo todo — o item 318N pede
 comprimento mínimo de 1,00 m, e um avental de 1,20 m atende.
 
+**Revisão humana volta para o pipeline** por `data/raw/revisao_matching.csv`
+(id_item, dominio, url_produto, decisao, motivo, decidido_em), lido por
+`src/core/revisao.aplicar_revisao` no plano (`etapa2_plano`) e na coleta
+(`etapa3_coletar`). `decisao` = `aceito` manda o par para a coleta;
+`descartado` tira o par do plano e, se ele já foi coletado, da entrega
+(o montador manda para a reserva). Para o mesmo par, vale a última
+linha do arquivo. A chave inclui a URL: se a varredura
+achar outro produto para o item, a decisão antiga não vale. O arquivo de
+achados nunca é editado.
+
+A varredura guarda **um** produto por item e site, o de maior score, e o
+produto certo às vezes fica preso no item vizinho ("fibra branca pct c/
+10" achada na busca da fibra verde). `aceito` para um item cujo par não
+existe, com uma URL que a varredura achou **no mesmo site**, vira achado
+desse item; URL que a varredura nunca viu não entra.
+
+Termo de busca que a descrição não gera ("botina" para "calçado de
+segurança", "piaçava" para "cerdas duras") vai em
+`data/raw/termos_extras.csv` (id_item, termo, motivo, decidido_em).
+`tabelas.ler_itens` soma esses termos depois dos gerados, só para a
+lista principal (`itens.csv`). Termo novo só adianta se o matching
+reconhecer o produto: a palavra do nome do item que a loja escreve de
+outro jeito vai em `matching.SINONIMOS_DO_NOME` ("botina" vale por
+"calçado", "piaçava" por "cerdas duras"). Sem isso, "Botina de Segurança
+Antiderrapante" ficava em 49 e nem chegava à revisão. Número de degraus é medida (família `degraus`), e
+"1.600 W" é mil e seiscentos (ponto de milhar), não 1,6.
+
 `matching.avaliar()` devolve score **e** decisão; `pontuar()` devolve só o
 número. Use `avaliar()`: reprovar é decisão, não é um número.
 
@@ -501,7 +573,35 @@ linha contra o `itens.csv` do Sul):
 data/output/prints/{CATEGORIA}/{id_item}__{dominio}__{uf}.png
 ```
 
-O montador deriva o caminho das próprias colunas da linha. Miniatura JPEG ~600px q70 em `data/output/miniaturas/` para embutir; PNG original fica intocado como prova.
+O montador deriva o caminho das próprias colunas da linha. PNG original fica intocado como prova.
+
+**Formato da entrega (decidido em 11/10/2026, modelo `EQUIPAMENTO.xlsx` da
+rodada Sul):** uma linha por preço, ordenada por item; linha de 300 pontos;
+coluna PRINT com 53,7 de largura, a miniatura num quadro de 376 x 400 px e,
+na célula, o caminho relativo do PNG com hyperlink. A miniatura é o **topo**
+da página (título, preço, CEP e frete), recortado na proporção do quadro e
+salvo em JPEG de 772 px em `data/output/miniaturas/` (`src/export/prints.py`).
+Texto das células quebrado e alinhado no topo.
+
+**Pasta de entrega:**
+
+```bash
+python -m src.export.montar_entrega --resultados data/output/RESULTADOS
+```
+
+```
+RESULTADOS/EXCEL/{CATEGORIA}.xlsx
+RESULTADOS/PRINTS/{CATEGORIA}/{id FGV}__{dominio}__GO.png   (só os que entraram)
+```
+
+O nome do print começa pelo ID FGV, então os 5 de cada item ficam juntos na
+pasta. A cada montagem, a cópia de quem saiu da planilha é apagada de
+PRINTS/ (o original em `data/output/prints/` fica), para a pasta ter
+só os prints das linhas entregues. O link da coluna PRINT é `../PRINTS/...`: a pasta RESULTADOS pode ser
+copiada inteira. Link que leva a uma página de busca nunca é produto
+(`busca.eh_url_de_busca`): o extrator descarta e o montador recusa. O
+extrator também descarta link de conta, favoritos e carrinho
+(`URL_DE_CONTA` em `generico_playwright.py`).
 
 ## Fora do escopo automatizado
 

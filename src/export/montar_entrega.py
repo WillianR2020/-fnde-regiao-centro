@@ -23,6 +23,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from src.core import tabelas
+from src.core.busca import eh_url_de_busca
+from src.core.revisao import ler_revisao
 from src.core.frete import frete_possivel_de_coletar, houve_recusa, sede_na_uf_da_pesquisa
 from src.core.log import obter
 from src.export.prints import caminho_miniatura, embutir, gerar_miniatura
@@ -58,6 +60,9 @@ def problema(candidato: dict) -> str:
     if preco in (None, "") or _numero(preco) <= 0:
         return "sem preço"
 
+    if eh_url_de_busca(candidato.get("url_produto") or ""):
+        return "URL é página de busca, não de produto"
+
     caminho = (candidato.get("caminho_print") or "").strip()
     if not caminho:
         return "sem print"
@@ -77,7 +82,16 @@ def problema(candidato: dict) -> str:
             if not frete_possivel_de_coletar(obs_frete):
                 return f"entrega em {UF_PESQUISA} não confirmada (sede fora de {UF_PESQUISA})"
 
-    if _numero(candidato.get("score_match")) < SCORE_MINIMO:
+    # Par recusado por quem revisou depois de coletado: a coleta fica no
+    # arquivo, mas a linha não entra.
+    if candidato.get("descartado_revisao"):
+        return "par descartado na revisão humana"
+
+    # Par aprovado por quem revisou (data/raw/revisao_matching.csv): a
+    # decisão humana substitui a nota do matching, que foi o que mandou o
+    # par para revisão.
+    if (_numero(candidato.get("score_match")) < SCORE_MINIMO
+            and not candidato.get("revisado")):
         return f"score {_numero(candidato.get('score_match')):.2f} abaixo do mínimo"
 
     return ""
@@ -108,6 +122,12 @@ def preco_total(candidato: dict) -> float | None:
     return round(preco + (frete or 0.0), 2)
 
 
+def _negativo_da_data(valor) -> str:
+    """Chave de ordenação que põe a data ISO mais recente primeiro."""
+    texto = str(valor or "")
+    return "".join(chr(0x10FFFF - ord(ch)) for ch in texto) if texto else chr(0x10FFFF)
+
+
 def escolher_cinco(candidatos: list[dict]) -> tuple[list[dict], list[dict]]:
     """Os 5 que vão para a entrega e os que sobram para a reserva.
 
@@ -129,8 +149,21 @@ def escolher_cinco(candidatos: list[dict]) -> tuple[list[dict], list[dict]]:
         else:
             validos.append(c)
 
+    # Dois registros do mesmo fornecedor (coleta refeita): fica o
+    # completo, o de maior score e, entre iguais, o MAIS RECENTE -- não o
+    # mais barato, que guardaria um preço velho ou mal lido.
+    por_dominio: dict[str, dict] = {}
+    for c in sorted(validos, key=lambda c: (
+            frete_a_coletar(c), -_numero(c.get("score_match")),
+            _negativo_da_data(c.get("coletado_em")))):
+        dominio = c.get("dominio", "")
+        if dominio in por_dominio:
+            reserva.append({**c, "motivo_reserva": "já há registro deste fornecedor"})
+        else:
+            por_dominio[dominio] = c
+
     ordenados = sorted(
-        validos,
+        por_dominio.values(),
         key=lambda c: (frete_a_coletar(c), -_numero(c.get("score_match")), _preco(c)),
     )
 
@@ -170,14 +203,28 @@ def ler_coletas(entrada: Path) -> list[dict]:
 # Montagem
 # ---------------------------------------------------------------------------
 
-def montar(entrada: Path, saida: Path, categorias: list[str] | None = None) -> dict:
-    """Lê os .jsonl, escolhe os 5 e gera um .xlsx por categoria."""
+def montar(entrada: Path, saida: Path, categorias: list[str] | None = None,
+           resultados: Path | None = None) -> dict:
+    """Lê os .jsonl, escolhe os 5 e gera um .xlsx por categoria.
+
+    Com `resultados`, monta a pasta de entrega pedida em 11/10/2026:
+
+        RESULTADOS/EXCEL/{CATEGORIA}.xlsx         (no lugar de `saida`)
+        RESULTADOS/PRINTS/{CATEGORIA}/{id FGV}__{dominio}__GO.png
+
+    Só os prints que entraram na planilha vão para PRINTS/, copiados do
+    data/output/prints/ (o original fica onde está). O nome começa pelo
+    ID FGV, então a pasta ordenada por nome mostra os 5 de cada item
+    juntos. O hyperlink da coluna PRINT é relativo (`../PRINTS/...`):
+    a pasta RESULTADOS pode ser copiada inteira para outra máquina.
+    """
     from openpyxl import Workbook
-    from openpyxl.styles import Font
+    from openpyxl.styles import Alignment, Font
 
     itens = tabelas.ler_itens(categorias)
     fornecedores = tabelas.ler_fornecedores(apenas_aprovados=False)
     coletas = ler_coletas(entrada)
+    revisao = ler_revisao()
 
     if not coletas:
         log.warning("nenhuma coleta em %s -- a etapa 3 ja rodou?", entrada)
@@ -193,7 +240,11 @@ def montar(entrada: Path, saida: Path, categorias: list[str] | None = None) -> d
         forn = fornecedores.get(c.get("dominio", ""))
         # A sede do master (Receita) ganha da gravada na coleta.
         uf_sede = forn.uf if forn and forn.uf else c.get("uf_sede")
-        c = {**c, "sede_go": sede_na_uf_da_pesquisa(uf_sede)}
+        chave = (c.get("id_item", ""), c.get("dominio", ""), (c.get("url_produto") or "").strip())
+        decisao = (revisao.get(chave, {}).get("decisao") or "").strip()
+        c = {**c, "sede_go": sede_na_uf_da_pesquisa(uf_sede),
+             "revisado": decisao == "aceito",
+             "descartado_revisao": decisao == "descartado"}
         grupos[(item.categoria, item.id_item, c.get("uf", ""))].append(c)
 
     reserva_geral: list[dict] = []
@@ -221,9 +272,14 @@ def montar(entrada: Path, saida: Path, categorias: list[str] | None = None) -> d
         for c in escolhidos:
             linhas_por_categoria[categoria].append((c, _linha(c, item, fornecedores)))
 
+    pasta_prints = None
+    if resultados is not None:
+        saida = Path(resultados) / "EXCEL"
+        pasta_prints = Path(resultados) / "PRINTS"
     saida = Path(saida)
     saida.mkdir(parents=True, exist_ok=True)
     gerados: list[str] = []
+    copiados: set[Path] = set()
 
     for categoria, linhas in sorted(linhas_por_categoria.items()):
         wb = Workbook()
@@ -239,15 +295,25 @@ def montar(entrada: Path, saida: Path, categorias: list[str] | None = None) -> d
 
         for numero, (coleta, linha) in enumerate(linhas, start=2):
             ws.append([linha.get(c) for c in COLUNAS])
+            # Formato da entrega do grupo: texto quebrado e alinhado no
+            # topo, porque a linha tem a altura do print (300 pontos).
+            for celula in ws[numero]:
+                celula.alignment = Alignment(wrap_text=True, vertical="top")
             if frete_a_coletar(coleta):
                 _marcar_frete_a_coletar(ws, numero, coleta)
-            _embutir_print(ws, numero, coluna_print, coleta)
+            if pasta_prints is not None:
+                coleta = _copiar_print(coleta, pasta_prints / categoria)
+                copiados.add(Path(coleta.get("caminho_print") or "").resolve())
+            _embutir_print(ws, numero, coluna_print, coleta, saida)
 
         _ajustar_larguras(ws)
         caminho = saida / f"{_arquivo(categoria)}.xlsx"
         wb.save(caminho)
         gerados.append(str(caminho))
         log.info("%s: %d linhas", caminho, len(linhas))
+
+    if pasta_prints is not None:
+        _limpar_prints_antigos(pasta_prints, linhas_por_categoria, copiados)
 
     _gravar_csv(RESERVA, reserva_geral)
     _gravar_csv(PENDENCIAS, pendencias)
@@ -317,13 +383,46 @@ def _marcar_frete_a_coletar(ws, numero: int, coleta: dict) -> None:
     obs.font = Font(bold=True)
 
 
-def _embutir_print(ws, linha: int, coluna: int, coleta: dict) -> None:
+def _limpar_prints_antigos(pasta_prints: Path, linhas_por_categoria: dict,
+                           copiados: set[Path]) -> None:
+    """Tira de PRINTS/ a cópia de quem saiu da planilha nesta montagem.
+
+    Sem isso, um fornecedor trocado por outro deixava o print velho na
+    pasta, e PRINTS/ deixava de ser "os 5 de cada item". Só mexe nas
+    categorias montadas agora; o original em data/output/prints/ fica.
+    """
+    removidos = 0
+    for categoria in linhas_por_categoria:
+        for png in (pasta_prints / categoria).glob("*.png"):
+            if png.resolve() not in copiados:
+                png.unlink()
+                removidos += 1
+    if removidos:
+        log.info("%s: %d prints de linhas que sairam da entrega removidos", pasta_prints, removidos)
+
+
+def _copiar_print(coleta: dict, destino: Path) -> dict:
+    """Copia o PNG da linha para a pasta de entrega e devolve a coleta apontando para a cópia."""
+    import shutil
+
+    original = Path((coleta.get("caminho_print") or "").strip())
+    if not original.name or not original.exists():
+        return coleta
+    destino.mkdir(parents=True, exist_ok=True)
+    copia = destino / original.name
+    if not copia.exists() or copia.stat().st_mtime < original.stat().st_mtime:
+        shutil.copy2(original, copia)
+    return {**coleta, "caminho_print": str(copia)}
+
+
+def _embutir_print(ws, linha: int, coluna: int, coleta: dict,
+                   pasta_planilha: Path | None = None) -> None:
     original = Path((coleta.get("caminho_print") or "").strip())
     if not original.name or not original.exists():
         return
     try:
         miniatura = gerar_miniatura(original, caminho_miniatura(original))
-        embutir(ws, linha, coluna, miniatura, original)
+        embutir(ws, linha, coluna, miniatura, original, relativo_a=pasta_planilha)
     except Exception as e:  # uma miniatura ruim não pode derrubar a entrega
         log.warning("print %s nao entrou na planilha (%s: %s)",
                     original, type(e).__name__, e)
@@ -404,5 +503,7 @@ if __name__ == "__main__":
     p.add_argument("--entrada", type=Path, default=Path("data/coletas"))
     p.add_argument("--saida", type=Path, default=Path("data/output"))
     p.add_argument("--categoria", action="append", dest="categorias")
+    p.add_argument("--resultados", type=Path, default=None,
+                   help="pasta de entrega: grava EXCEL/ e PRINTS/ dentro dela")
     a = p.parse_args()
-    montar(a.entrada, a.saida, a.categorias)
+    montar(a.entrada, a.saida, a.categorias, a.resultados)

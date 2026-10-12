@@ -39,7 +39,20 @@ SELETORES_CEP = (
     "input[name*='zip' i]",
 )
 
+# Loja que só cota frete no carrinho: a ficha não tem campo de CEP, e
+# sem cotação a sede fora de GO não entra. Para estas, cotação e print
+# põem o produto num carrinho de visitante (sem conta, sem cadastro) e
+# preenchem o CEP lá; o print do carrinho mostra produto, preço e frete
+# juntos. Só entra loja conferida à mão -- clicar em comprar continua
+# proibido em qualquer outra.
+#   dominio -> (botão de adicionar na ficha, caminho do carrinho)
+FRETE_NO_CARRINHO = {
+    # Magento (Hyvä); o carrinho leva ~10 s para trazer a transportadora.
+    "shoppingdaseguranca.com.br": ("#product-addtocart-button", "/checkout/cart/"),
+}
+
 ESPERA_MAX_FRETE_MS = 15000
+ESPERA_CARRINHO_MS = 40000  # a transportadora do carrinho Magento chegou em ~20 s
 ESPERA_ENTER_S = 5
 LARGURA, ALTURA = 1366, 900
 
@@ -145,10 +158,13 @@ def capturar(
     try:
         pagina.goto(url, wait_until="domcontentloaded", timeout=45000)
         _aceitar_cookies(pagina)
+        escolher_variacoes(pagina)
 
         if cep:
+            carrinho = abrir_carrinho_se_preciso(pagina, url)
             preenchido, _, _ = preencher_e_esperar_frete(
                 pagina, cep, seletor_cep, seletor_resultado,
+                espera_ms=ESPERA_CARRINHO_MS if carrinho else ESPERA_MAX_FRETE_MS,
             )
             if not preenchido:
                 log.warning("nao achei campo de CEP em %s; print sai sem frete", url)
@@ -173,11 +189,35 @@ def capturar(
     return destino
 
 
+def abrir_carrinho_se_preciso(pagina, url: str) -> bool:
+    """Loja de FRETE_NO_CARRINHO: põe o produto no carrinho e vai para lá.
+
+    Devolve False (e não mexe na página) para qualquer outra loja.
+    """
+    from urllib.parse import urlparse
+
+    partes = urlparse(url)
+    conf = FRETE_NO_CARRINHO.get(partes.netloc.lower().removeprefix("www."))
+    if conf is None:
+        return False
+    botao, caminho = conf
+    pagina.locator(botao).first.click(timeout=15000)
+    pagina.wait_for_timeout(5000)
+    pagina.goto(f"{partes.scheme}://{partes.netloc}{caminho}",
+                wait_until="domcontentloaded", timeout=45000)
+    try:
+        pagina.wait_for_load_state("networkidle", timeout=10000)
+    except Exception:
+        pass
+    return True
+
+
 def preencher_e_esperar_frete(
     pagina,
     cep: str,
     seletor_cep: str = "",
     seletor_resultado: str = "",
+    espera_ms: int = ESPERA_MAX_FRETE_MS,
 ) -> tuple[bool, str, str]:
     """Preenche o CEP, pede o cálculo e espera a cotação aparecer.
 
@@ -199,13 +239,13 @@ def preencher_e_esperar_frete(
 
     if seletor_resultado:
         try:
-            pagina.wait_for_selector(seletor_resultado, timeout=ESPERA_MAX_FRETE_MS)
+            pagina.wait_for_selector(seletor_resultado, timeout=espera_ms)
         except Exception:
             log.warning("resultado de frete nao apareceu (%s)", seletor_resultado)
         return True, antes, pagina.evaluate(TEXTO)
 
     depois = antes
-    for segundo in range(ESPERA_MAX_FRETE_MS // 1000):
+    for segundo in range(espera_ms // 1000):
         if segundo == ESPERA_ENTER_S:
             # O botão não trouxe nada: há tema que só calcula no Enter.
             # Fica para depois porque, noutros, o Enter submete o
@@ -231,19 +271,37 @@ def preencher_e_esperar_frete(
 #
 # Botão com rótulo ("Calcular", "OK") ganha de botão só com ícone: numa
 # loja Tray real o primeiro botão sem texto do bloco não era o de frete.
+#
+# Tray antiga ("commercesuite"): o botão é um link `a.botao-simular-frete`
+# e o CEP fica dentro do formulário de compra. Sem reconhecer a classe, a
+# reserva "submit do mesmo formulário" clicava em Comprar e punha o
+# produto no carrinho. Botão de compra nunca é reserva.
 BOTAO_DO_CAMPO = """(campo) => {
   const rotulo = /^(calcular|consultar|ok|simular|buscar|calcular frete)$/i;
+  const deFrete = /frete|simular|calcul/i;
+  const deCompra = /comprar|carrinho|adicionar|sacola|cesta/i;
   const texto = (b) => (b.innerText || b.value || '').trim();
   let no = campo.parentElement;
   for (let i = 0; i < 3 && no; i++, no = no.parentElement) {
     const botoes = [...no.querySelectorAll(
-      'button, input[type=submit], input[type=button], a[class*="btn" i]')]
-      .filter(b => b !== campo && b.offsetParent !== null);
+      'button, input[type=submit], input[type=button], a[class*="btn" i], ' +
+      'a[class*="botao" i], a[class*="frete" i], a[class*="simular" i], a[class*="calcul" i]')]
+      .filter(b => b !== campo && b.offsetParent !== null)
+      .filter(b => !deCompra.test(texto(b) + ' ' + (b.className || '') + ' ' + (b.id || '')));
     const botao = botoes.find(b => rotulo.test(texto(b))) ||
+                  botoes.find(b => deFrete.test((b.className || '') + ' ' + (b.id || ''))) ||
                   botoes.find(b => !texto(b) && (b.type === 'submit' || b.closest('form') === campo.closest('form') && campo.closest('form')));
     if (botao) { botao.click(); return true; }
   }
   return false;
+}"""
+
+# CEP em dois campos (5 + 3 dígitos), lado a lado: devolve o segundo.
+SEGUNDO_CAMPO_CEP = """(campo) => {
+  if (campo.maxLength !== 5) return null;
+  const irmaos = [...campo.parentElement.querySelectorAll('input')];
+  const seguinte = irmaos[irmaos.indexOf(campo) + 1];
+  return seguinte && seguinte.maxLength === 3 ? true : null;
 }"""
 
 
@@ -267,13 +325,63 @@ def _preencher_cep(pagina, cep: str, seletor_cep: str = ""):
                 # (Tray, "crazy_cep") só registra o valor nos eventos de
                 # teclado, e o botão calculava com o campo "vazio".
                 campo.fill("", timeout=5000)
-                campo.press_sequentially(cep, delay=40, timeout=10000)
+                digitos = "".join(c for c in cep if c.isdigit())
+                if campo.evaluate(SEGUNDO_CAMPO_CEP):
+                    segundo = campo.locator("xpath=following-sibling::input[1]")
+                    campo.press_sequentially(digitos[:5], delay=40, timeout=10000)
+                    segundo.fill("", timeout=5000)
+                    segundo.press_sequentially(digitos[5:], delay=40, timeout=10000)
+                else:
+                    campo.press_sequentially(cep, delay=40, timeout=10000)
+                # Campo com debounce (Alpine/Hyvä) só passa o valor adiante
+                # um instante depois da última tecla; o clique imediato
+                # calculava com o CEP vazio e só trazia "retirada".
+                pagina.wait_for_timeout(800)
                 if not campo.evaluate(BOTAO_DO_CAMPO):
                     campo.press("Enter")
                 return campo
         except Exception:  # noqa: PERF203 - seletor que não serve, tenta o próximo
             continue
     return None
+
+
+def escolher_variacoes(pagina) -> int:
+    """Escolhe a primeira opção disponível de cada grade de variação (Loja Integrada).
+
+    Produto com grade (cor, espessura, quantidade) não calcula frete
+    antes da escolha -- "Antes de calcular o frete é necessário escolher
+    as opções do produto" -- e mostra "A partir de R$ ..." no lugar do
+    preço. Na Casa do Saco de Lixo, 36 itens aceitos ficavam com o frete
+    a coletar à mão por isso. A escolha é a primeira opção disponível: o
+    print mostra qual foi, e o preço lido é o dela.
+
+    Devolve quantas grades foram escolhidas (0 = a página não tem grade).
+    """
+    try:
+        grades = pagina.evaluate("""() => [...new Set(
+            [...document.querySelectorAll('a.atributo-item[data-grade-id]')]
+              .map(a => a.dataset.gradeId))]""")
+    except Exception:
+        return 0
+    escolhidas = 0
+    for grade in grades:
+        opcoes = pagina.locator(
+            f"a.atributo-item[data-grade-id='{grade}']"
+            ":not([class*='indisponivel']):not([class*='disabled'])"
+        )
+        for n in range(opcoes.count()):
+            opcao = opcoes.nth(n)
+            try:
+                if opcao.is_visible():
+                    opcao.click(timeout=3000)
+                    pagina.wait_for_timeout(800)
+                    escolhidas += 1
+                    break
+            except Exception:  # noqa: PERF203
+                continue
+    if escolhidas:
+        log.info("%s: %d grade(s) de variacao escolhida(s)", pagina.url, escolhidas)
+    return escolhidas
 
 
 def _aceitar_cookies(pagina) -> None:

@@ -29,7 +29,19 @@ log = obter(__name__)
 
 TEMPO_NAVEGACAO_MS = 45000
 
-PRECO = re.compile(r"R\$\s*([\d.]+,\d{2})")
+# Milhar com ponto em grupos de 3, ou sem separador. "R$ 17.9117,91" é
+# texto de dois spans colados (Dutra: preço cheio e preço PIX) e não é
+# número nenhum -- o padrão antigo lia 179.117,91.
+VALOR = r"(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})"
+PRECO = re.compile(r"R\$\s*" + VALOR)
+# "De R$ 56,80 / R$ 44,55": o primeiro valor do bloco é o riscado. Loja
+# que não usa <del> (PreveOeste, Dutra) só se distingue por esse "De".
+# "A partir de R$" é preço de verdade e fica.
+DE_RISCADO = re.compile(r"(?<!partir )\bde:?\s*R\$\s*" + VALOR, re.IGNORECASE)
+# "economize R$ 1,99" é a diferença, não o preço.
+ECONOMIA = re.compile(r"\b(?:economi\w*|poupe)\s*(?:de\s*)?:?\s*R\$\s*" + VALOR, re.IGNORECASE)
+# "Por R$ 17,91": quando a loja escreve, é o preço de venda.
+POR = re.compile(r"\bpor:?\s*R\$\s*" + VALOR, re.IGNORECASE)
 
 # Frase de loja que respondeu e recusou o CEP. Vira o marcador de
 # core.frete, que é o que separa recusa de "não consegui cotar".
@@ -91,6 +103,17 @@ FICHA = """() => {
     area = h1;
     for (let i = 0; i < 3 && area.parentElement; i++) area = area.parentElement;
   }
+  // Tema que separa título/descrição do bloco de preço: a área achada
+  // não tem preço nenhum e a ficha saía "sem preço" com R$ 149,00 na
+  // tela (Casa da Limpeza, Woo). Sobe até 4 níveis atrás do preço.
+  const temPreco = (e) => /R\\$\\s*\\d/.test(e.innerText || '');
+  if (area && !temPreco(area)) {
+    let acima = area;
+    for (let i = 0; i < 4 && acima.parentElement && acima.parentElement !== document.body; i++) {
+      acima = acima.parentElement;
+      if (temPreco(acima)) { area = acima; break; }
+    }
+  }
   area = area || document.body;
   const texto = (sel) => {
     for (const e of area.querySelectorAll(sel)) {
@@ -139,6 +162,23 @@ def _numero(valor) -> float | None:
     except ValueError:
         return None
     return valor if valor > 0 else None
+
+
+def _preco_por(texto) -> float | None:
+    achado = POR.search(str(texto or ""))
+    return _numero("R$ " + achado.group(1)) if achado else None
+
+
+def _preco_de_venda(texto) -> float | None:
+    """Primeiro preço do texto que não é o "De R$" riscado nem a economia."""
+    if texto is None:
+        return None
+    return _numero(ECONOMIA.sub(" ", DE_RISCADO.sub(" ", str(texto))))
+
+
+def _riscado_do_texto(texto) -> float | None:
+    achado = DE_RISCADO.search(str(texto or ""))
+    return _numero("R$ " + achado.group(1)) if achado else None
 
 
 def _sem_acento(texto: str) -> str:
@@ -229,16 +269,22 @@ def produto_da_ficha(ficha: dict, url: str) -> ProdutoBruto:
     if disponivel is None and ficha.get("meta_estoque"):
         disponivel = "out" not in _sem_acento(ficha["meta_estoque"]).replace(" ", "")
     if preco is None:
-        preco = _numero(ficha.get("preco_atual"))
+        # "Por R$" vale mais que a ordem dos valores; a área inteira vem
+        # antes porque o bloco de preço às vezes cola dois spans.
+        preco = _preco_por(ficha.get("texto_area")) or _preco_por(ficha.get("preco_atual"))
     if preco is None:
-        preco = _numero(ficha.get("texto_area"))
+        preco = _preco_de_venda(ficha.get("preco_atual"))
+    if preco is None:
+        preco = _preco_de_venda(ficha.get("texto_area"))
     if preco is None:
         raise RespostaInvalida(f"pagina sem preco: {url}", url)
 
     if disponivel is None:
         disponivel = _estoque_do_texto(ficha.get("texto_area") or "")
 
-    riscado = _numero(ficha.get("preco_riscado"))
+    riscado = (_numero(ficha.get("preco_riscado"))
+               or _riscado_do_texto(ficha.get("preco_atual"))
+               or _riscado_do_texto(ficha.get("texto_area")))
     if riscado is not None and riscado <= preco:
         riscado = None
 
@@ -273,8 +319,16 @@ def frete_do_texto(antes: str, depois: str) -> tuple[float | None, str]:
     for i, linha in enumerate(novas):
         # A linha do nome da modalidade e a do valor costumam vir
         # separadas ("PAC" / "R$ 32,10"); a observação leva as duas.
-        rotulo = f"{novas[i - 1]} {linha}" if i and len(novas[i - 1]) < 60 else linha
-        # A linha decide sozinha quando tem texto; a de cima só entra
+        # A Gimba quebra em quatro ("Envio:" / "Transportadora" / "Valor:"
+        # / "R$ 77,36"): sobe até três linhas curtas, parando na primeira
+        # que já tem valor próprio -- essa é outra opção.
+        acima = []
+        for anterior in reversed(novas[max(0, i - 3):i]):
+            if len(anterior) >= 60 or PRECO.search(anterior):
+                break
+            acima.insert(0, anterior)
+        rotulo = " ".join(acima + [linha])
+        # A linha decide sozinha quando tem texto; as de cima só entram
         # quando esta é o valor puro. Senão "Retirar na loja" contamina o
         # PAC logo abaixo.
         tem_texto = re.search(r"[a-z]{3}", _sem_acento(linha))
@@ -311,7 +365,7 @@ def frete_do_texto(antes: str, depois: str) -> tuple[float | None, str]:
 # ---------------------------------------------------------------------------
 
 def _abrir(url: str):
-    from src.export.captura import _aceitar_cookies, novo_contexto
+    from src.export.captura import _aceitar_cookies, escolher_variacoes, novo_contexto
 
     contexto = novo_contexto()
     pagina = contexto.new_page()
@@ -333,6 +387,7 @@ def _abrir(url: str):
     except Exception:  # loja com polling eterno: segue com o que tem
         pass
     _aceitar_cookies(pagina)
+    escolher_variacoes(pagina)
     return contexto, pagina
 
 
@@ -347,12 +402,18 @@ def detalhar(url: str) -> ProdutoBruto:
 
 def cotar_frete(url: str, cep: str, seletor_cep: str = "",
                 seletor_resultado: str = "") -> tuple[float | None, str]:
-    from src.export.captura import preencher_e_esperar_frete
+    from src.export.captura import (ESPERA_CARRINHO_MS, ESPERA_MAX_FRETE_MS,
+                                    abrir_carrinho_se_preciso, preencher_e_esperar_frete)
 
     contexto, pagina = _abrir(url)
     try:
+        try:
+            carrinho = abrir_carrinho_se_preciso(pagina, url)
+        except Exception as e:
+            return None, f"carrinho nao abriu para cotar o frete ({type(e).__name__}); frete sob consulta"
         preenchido, antes, depois = preencher_e_esperar_frete(
             pagina, cep, seletor_cep, seletor_resultado,
+            espera_ms=ESPERA_CARRINHO_MS if carrinho else ESPERA_MAX_FRETE_MS,
         )
     finally:
         contexto.close()

@@ -47,6 +47,7 @@ import time
 from urllib.parse import quote_plus, urljoin
 
 from src.adapters.base import Executor
+from src.core.busca import eh_url_de_busca
 from src.core.http import INTERVALO_MAX, INTERVALO_MIN, FalhaDeRede, SiteBloqueado
 from src.core.log import obter
 from src.models import Plataforma, ProdutoBruto
@@ -171,6 +172,15 @@ TITULOS_INUTEIS = re.compile(
 
 PRECO = re.compile(r"R\$\s*([\d.\s]+,\d{2})")
 
+# Botão de favoritar, conta e carrinho moram dentro do card do produto e
+# viravam o link do achado: na Plásticos Ipiranga (Loja Integrada) os 57
+# achados apontavam para "/conta/favorito/<id>/adicionar", sem preço.
+URL_DE_CONTA = re.compile(
+    r"/(conta|minha-conta|my-account|account|login|entrar|cadastro|"
+    r"carrinho|cart|checkout)(/|\?|$)|favorit|wishlist|lista-de-desejos",
+    re.IGNORECASE,
+)
+
 # Os primeiros caracteres visíveis, que dizem se a página é resultado de
 # busca, 404 ou home. Script separado do de extração de propósito: é
 # outra pergunta, feita antes, e barata.
@@ -234,8 +244,12 @@ EXTRAIR = """() => {
   // card. Numa loja real isso trouxe "SOBRE NÓS" e "Talheres de Mesa"
   // como se fossem produtos -- ruído que o matching pontua a sério.
   const ehNavegacao = (a) =>
-    a.closest('nav,header,footer,[role="navigation"],[class*="menu" i],' +
-              '[class*="nav" i],[class*="breadcrumb" i],[class*="rodape" i]');
+    a.closest('nav,header,footer,[role="navigation"],[class*="breadcrumb" i],' +
+              '[class*="rodape" i]');
+  // Classe com "nav"/"menu" é indício mais fraco: a Gimba embrulha a
+  // vitrine de resultados inteira num "NavegaVitrine". Ali o link só é
+  // descartado se não tiver preço por perto -- link de menu não tem.
+  const ehMenuPorClasse = (a) => a.closest('[class*="menu" i],[class*="nav" i]');
 
   for (const a of document.querySelectorAll('a[href]')) {
     const href = a.href || '';
@@ -255,6 +269,7 @@ EXTRAIR = """() => {
       if (achado) preco = achado[0];
     }
     if (!ehProduto(href) && !preco) continue;
+    if (!preco && ehMenuPorClasse(a)) continue;
     juntar(titulo, href, preco, a.getAttribute('data-sku'));
   }
   return saida;
@@ -722,7 +737,7 @@ def produtos_da_pagina(brutos: list[dict], url_pagina: str) -> list[ProdutoBruto
             continue
 
         url = urljoin(url_pagina, url)
-        if url in vistos:
+        if url in vistos or eh_url_de_busca(url) or URL_DE_CONTA.search(url):
             continue
         vistos.add(url)
 

@@ -236,6 +236,40 @@ def test_monta_a_planilha_com_as_16_colunas(projeto):
     assert 49.9 in linha
 
 
+def test_pasta_resultados_tem_excel_e_prints_com_link_relativo(projeto):
+    """RESULTADOS/EXCEL e RESULTADOS/PRINTS, no formato da EQUIPAMENTO.xlsx."""
+    from openpyxl import load_workbook
+
+    _coletar(projeto, "loja-a.com.br", "U001", "GO", 49.9)
+    resultados = projeto / "RESULTADOS"
+
+    montar_entrega.montar(projeto / "data/coletas", projeto / "data/output",
+                          ["UTENSILIOS"], resultados=resultados)
+
+    copia = resultados / "PRINTS/UTENSILIOS/U001__loja-a.com.br__GO.png"
+    assert copia.exists()
+    ws = load_workbook(resultados / "EXCEL/UTENSILIOS.xlsx").active
+    alvo = "../PRINTS/UTENSILIOS/U001__loja-a.com.br__GO.png"
+    assert ws["P2"].value == alvo and ws["P2"].hyperlink.target == alvo
+    assert ws.row_dimensions[2].height == 300
+    assert ws.column_dimensions["P"].width == 53.7
+    assert len(ws._images) == 1
+
+
+def test_print_de_quem_saiu_da_entrega_sai_da_pasta(projeto):
+    _coletar(projeto, "loja-a.com.br", "U001", "GO", 49.9)
+    resultados = projeto / "RESULTADOS"
+    velho = resultados / "PRINTS/UTENSILIOS/U001__loja-velha.com.br__GO.png"
+    velho.parent.mkdir(parents=True)
+    velho.write_bytes(b"png velho")
+
+    montar_entrega.montar(projeto / "data/coletas", projeto / "data/output",
+                          ["UTENSILIOS"], resultados=resultados)
+
+    assert not velho.exists()
+    assert (resultados / "PRINTS/UTENSILIOS/U001__loja-a.com.br__GO.png").exists()
+
+
 def test_monta_com_a_coleta_pela_metade_e_registra_a_pendencia(projeto):
     """Rodar isto no primeiro site coletado é o ponto da etapa."""
     _coletar(projeto, "loja-a.com.br", "U001", "GO", 49.9)

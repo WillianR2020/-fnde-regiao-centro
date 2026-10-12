@@ -33,6 +33,17 @@ class WooExecutor(Executor):
     SONDA = "{base}/wp-json/wc/store/v1/products?per_page=1"
 
     def buscar(self, termo: str) -> list[ProdutoBruto]:
+        produtos = self._buscar_api(termo)
+        palavra = palavra_de_recuo(termo)
+        if not produtos and palavra:
+            # A busca do WordPress compara acento: na Mundo Azul,
+            # "lavadora pressao" dá zero e "lavadora" traz a "Pressão".
+            # Os termos chegam sem acento (unidecode), então a palavra
+            # mais longa sozinha é o recuo; o matching filtra o resto.
+            produtos = self._buscar_api(palavra)
+        return produtos
+
+    def _buscar_api(self, termo: str) -> list[ProdutoBruto]:
         url = (f"{self.fornecedor.url_base.rstrip('/')}"
                f"/wp-json/wc/store/v1/products?search={quote(termo)}&per_page=20")
         try:
@@ -97,3 +108,12 @@ def _sem_html(texto: str) -> str:
     import re
 
     return html.unescape(re.sub(r"<[^>]+>", "", texto)).strip()
+
+
+def palavra_de_recuo(termo: str) -> str:
+    """A palavra mais longa de um termo de várias, se tiver 5 letras ou mais."""
+    palavras = [p for p in termo.split() if p.isalpha()]
+    if len(palavras) < 2:
+        return ""
+    maior = max(palavras, key=len)
+    return maior if len(maior) >= 5 else ""

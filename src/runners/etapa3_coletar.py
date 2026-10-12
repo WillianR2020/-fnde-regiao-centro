@@ -27,6 +27,7 @@ from src.adapters.base import Executor
 from src.core import frete
 from src.core.http import ErroHTTP, SiteBloqueado
 from src.core.log import obter
+from src.core.revisao import aplicar_revisao
 from src.export.captura import PrintIndisponivel
 from src.models import CEPS_CENTRO, Coleta, Item
 from src.runners.etapa2_varredura import ler_achados, registrar_bloqueio
@@ -138,13 +139,28 @@ def coletar_site(executor: Executor, itens: list[Item]) -> dict:
     arquivo = DESTINO / f"{dominio}.jsonl"
 
     completos = sanear(arquivo)
-    feitos = {(r["id_item"], r["uf"]) for r in completos}
+    # Linha amarela ("frete a coletar") é completa para a entrega, então
+    # a retomada a pula. Depois de corrigir a leitura de frete, quem quer
+    # tentar de novo liga REFAZER_FRETE_A_COLETAR=1: o registro antigo
+    # fica no arquivo, e o montador prefere o novo se o frete vier.
+    refazer = os.environ.get("REFAZER_FRETE_A_COLETAR") == "1"
+    # Idem para o frete "sob consulta" (página sem calculadora), depois de
+    # a loja ganhar um caminho de cotação (captura.FRETE_NO_CARRINHO).
+    refazer_sem_frete = os.environ.get("REFAZER_SEM_FRETE") == "1"
+    # E tudo de novo, depois de corrigir a leitura de PREÇO de uma loja
+    # (usar com a lista de sites restrita a ela).
+    refazer_tudo = os.environ.get("REFAZER_TUDO") == "1"
+    feitos = set() if refazer_tudo else {
+        (r["id_item"], r["uf"]) for r in completos
+        if not (refazer and frete.frete_possivel_de_coletar(r.get("obs_frete")))
+        and not (refazer_sem_frete and _sem_frete_cotado(r))
+    }
 
     # A URL de cada item veio da varredura. Só "aceito" entra na coleta;
-    # o que ficou em revisão espera decisão humana.
+    # o que ficou em revisão espera decisão humana (data/raw/revisao_matching.csv).
     achados = {
         a["id_item"]: a
-        for a in ler_achados(dominio)
+        for a in aplicar_revisao(ler_achados(dominio))
         if a.get("classificacao", "aceito") == "aceito"
     }
 
@@ -269,6 +285,12 @@ def _coletar_uf(executor, item: Item, produto, achado: dict, uf: str, dominio: s
     # tem ou não tem frete, mesmo que o master mude depois.
     registro["uf_sede"] = uf_sede
     return registro
+
+
+def _sem_frete_cotado(r: dict) -> bool:
+    """Registro de fora de GO que ficou sem valor de frete."""
+    return (r.get("valor_frete") in (None, "")
+            and (r.get("obs_frete") or "") != frete.FRETE_DISPENSADO)
 
 
 def _numero(valor) -> float:
