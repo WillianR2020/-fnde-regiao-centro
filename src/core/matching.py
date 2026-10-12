@@ -340,8 +340,13 @@ SCORE_NOME_DO_ITEM = 90.0
 # "cerdas duras" é a de piaçava.
 SINONIMOS_DO_NOME = {
     "calcado": {"botina", "bota", "sapato", "tenis", "coturno"},
-    "cerdas": {"piacava"},
+    "cerdas": {"piacava", "palha"},
     "duras": {"piacava"},
+    "desodorizador": {"pedra", "bloco", "odorizador"},
+    "limpador": {"limpa"},
+    "perfumada": {"desodorizadora", "odorizadora", "aromatizada"},
+    "sinalizadora": {"sinalizacao", "interditado"},
+    "plastica": {"plastico"},
 }
 
 

@@ -281,3 +281,19 @@ def test_botina_e_calcado_de_seguranca():
     assert matching.avaliar(desc, "Botina de Segurança Bico de Composite Antiderrapante CA 40377").classificacao == "aceito"
     # sinônimo não dispensa as outras palavras do nome
     assert matching.avaliar(desc, "Bota de Borracha Cano Longo").classificacao != "aceito"
+
+
+def test_sinonimos_do_nome_de_limpeza():
+    casos = [
+        ("DESODORIZADOR SANITÁRIO/PEDRA SANITÁRIA - COM REDE PROTETORA E GANCHO.",
+         "Pedra Sanitária com Rede Protetora Lavanda"),
+        ("TELA PERFUMADA PARA MICTÓRIO - TELA DESODORIZADORA PARA MICTÓRIO.",
+         "Tela Desodorizadora para Mictório Lavanda"),
+        ("VASSOURA DE CERDAS NATURAIS/PALHA - PARA ÁREAS EXTERNAS.",
+         "Vassoura de Palha Caipira com Cabo"),
+    ]
+    for desc, titulo in casos:
+        assert matching.avaliar(desc, titulo).classificacao == "aceito", titulo
+    # palha não é cerda dura
+    assert matching.avaliar("VASSOURA DE CERDAS DURAS - PARA ESFREGAR PISOS.",
+                            "Vassoura de Palha Caipira").classificacao != "aceito"
