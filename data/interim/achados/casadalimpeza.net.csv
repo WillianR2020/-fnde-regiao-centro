@@ -1,5 +1,5 @@
 id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
-1001,casadalimpeza.net,https://casadalimpeza.net/produto/sabao-liquido-para-roupas-deoline-5-litros/,Sabão líquido para roupas Deoline 5 litros,0.596,62.0,2026-10-12T12:16:09,revisar,,1743
+1001,casadalimpeza.net,https://casadalimpeza.net/produto/sabao-liquido-para-roupas-deoline-5-litros/,Sabão líquido para roupas Deoline 5 litros,0.587,62.0,2026-10-13T14:47:51,revisar,,1743
 1002,casadalimpeza.net,https://casadalimpeza.net/produto/sabao-liquido-para-roupas-deoline-5-litros/,Sabão líquido para roupas Deoline 5 litros,0.563,62.0,2026-10-12T14:06:30,revisar,,1743
 1008,casadalimpeza.net,https://casadalimpeza.net/produto/cera-acrilica-start-master-5l/,Cera acrílica Start Master 5L,0.495,205.0,2026-10-12T14:06:59,revisar,volume pedida [1.0] e o produto traz [5.0],1824
 1014,casadalimpeza.net,https://casadalimpeza.net/produto/klyo-pine-detergente-desengraxante-5l/,Klyo pine detergente desengraxante 5L,0.92,149.0,2026-10-10T22:58:13,aceito,,1738

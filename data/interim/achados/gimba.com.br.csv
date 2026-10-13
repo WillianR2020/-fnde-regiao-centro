@@ -1,5 +1,6 @@
 id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
 1000,gimba.com.br,https://www.gimba.com.br/agua-sanitaria/agua-sanitaria-super-candida-cloro-ativo-20-a-25-5l-1-un/?PID=30205,"Água Sanitária Super Cândida Cloro Ativo 2,0 a 2,5% 5L 1 UN",0.92,19.99,2026-10-11T21:29:06,aceito,,
+1001,gimba.com.br,https://www.gimba.com.br/alcool/alcool-liquido-audax-46-facilita-5l-1-un/?PID=160864,Álcool Líquido Audax 46° Facilita 5L 1 UN,0.659,34.99,2026-10-13T14:49:07,aceito,,
 1002,gimba.com.br,https://www.gimba.com.br/alcool/alcool-em-gel-gelalcool-bactericida-para-limpeza-70-inpm-450g-1-un/?PID=69041,Álcool em Gel Gelálcool Bactericida para Limpeza 70º INPM 450g 1 UN,0.697,8.99,2026-10-12T14:22:57,aceito,,
 1003,gimba.com.br,https://www.gimba.com.br/alcool-em-gel-antisseptico/alcool-em-gel-kimbra-70-antisseptico-5l-1-un/?PID=81051,Álcool em Gel Kimbra 70% Antisséptico 5L 1 UN,0.821,214.9,2026-10-11T21:29:23,aceito,,
 1004,gimba.com.br,https://www.gimba.com.br/alcool-em-gel-antisseptico/alcool-em-gel-edumax-70-antisseptico-para-maos-refil-800ml-1-un/?PID=56058,Álcool em Gel Edumax 70% Antisséptico para Mãos Refil 800ml 1 UN,0.706,19.9,2026-10-11T21:29:30,aceito,,

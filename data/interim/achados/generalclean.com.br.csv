@@ -1,6 +1,6 @@
 id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
 1000,generalclean.com.br,https://www.generalclean.com.br/agua-sanitaria-5-litros,Água Sanitária 5 Litros,0.92,17.24,2026-10-10T23:43:27,aceito,,
-1001,generalclean.com.br,https://www.generalclean.com.br/alcool-liquido-70-5lt,ALCOOL LIQUIDO 70% - 5LT,0.64,48.69,2026-10-12T12:19:47,revisar,concentracao pedida [54.0] e o produto traz [70.0],
+1001,generalclean.com.br,https://www.generalclean.com.br/alcool-liquido-70-5lt,ALCOOL LIQUIDO 70% - 5LT,0.64,48.69,2026-10-13T14:48:57,revisar,concentracao pedida [46.2] e o produto traz [70.0],
 1002,generalclean.com.br,https://www.generalclean.com.br/alcool-liquido-70-5lt,ALCOOL LIQUIDO 70% - 5LT,0.916,48.69,2026-10-12T14:21:49,aceito,,
 1003,generalclean.com.br,https://www.generalclean.com.br/alcool-gel-5-lts,ALCOOL GEL 5LTS PARA AS MAOS 70%,0.733,49.88,2026-10-10T23:43:44,aceito,,
 1004,generalclean.com.br,https://www.generalclean.com.br/frasco-para-alcool-gel-60ml,ALCOOL GEL 70% FRASCO 60ML,0.747,17.1,2026-10-10T23:43:48,aceito,,

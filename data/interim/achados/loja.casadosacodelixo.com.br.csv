@@ -1,6 +1,6 @@
 id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
 1000,loja.casadosacodelixo.com.br,https://loja.casadosacodelixo.com.br/agua-sanitaria-quimibel,Água Sanitária,0.8,4.5,2026-10-11T07:03:14,aceito,,
-1001,loja.casadosacodelixo.com.br,https://loja.casadosacodelixo.com.br/alcool-perfumado-5-litros-da-casa,Álcool Perfumado - 5 Litros - Da Casa,0.591,43.05,2026-10-12T12:22:19,revisar,,
+1001,loja.casadosacodelixo.com.br,https://loja.casadosacodelixo.com.br/alcool-etilico-de-cereais-944-1-litro-tupi,"Álcool etílico de cereais 94,4º 1 Litro - Tupi",0.72,15.65,2026-10-13T14:50:05,revisar,concentracao pedida [46.2] e o produto traz [94.4],
 1002,loja.casadosacodelixo.com.br,https://loja.casadosacodelixo.com.br/alcool-liquido-70o-tupi-5-litros,Álcool líquido 70º - Tupi - 5 Litros,0.733,52.49,2026-10-12T14:33:16,aceito,,
 1003,loja.casadosacodelixo.com.br,https://loja.casadosacodelixo.com.br/alcool-em-gel-70o-antisseptico-premisse-5-litros,Álcool em Gel 70º Antisséptico - Premisse - 5 Litros,0.771,99.9,2026-10-11T07:03:33,aceito,,
 1004,loja.casadosacodelixo.com.br,https://loja.casadosacodelixo.com.br/alcool-em-gel-70o-antisseptico-premisse-800ml-refil,Álcool em Gel 70º Antisséptico - Premisse - 800ml - Refil,0.68,15.8,2026-10-11T07:03:38,aceito,,

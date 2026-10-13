@@ -1,5 +1,5 @@
 id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
-1001,hddistribuidora.com,https://hddistribuidora.com/produto/sabonete-liquido-erva-doce-soft-plus-5-litros/,Sabonete Líquido Erva Doce Soft Plus 5 Litros,0.612,61.0,2026-10-12T12:20:59,revisar,,4645
+1001,hddistribuidora.com,https://hddistribuidora.com/produto/sabonete-liquido-erva-doce-soft-plus-5-litros/,Sabonete Líquido Erva Doce Soft Plus 5 Litros,0.604,61.0,2026-10-13T14:49:10,revisar,,4645
 1002,hddistribuidora.com,https://hddistribuidora.com/produto/all-clean-alcool-gel-70o-5-litros/,All Clean Álcool Gel 70º – 5 litros,0.647,59.0,2026-10-12T14:29:11,aceito,,4552
 1008,hddistribuidora.com,https://hddistribuidora.com/produto/master-shine/,Cera Acrílica Master Shine 5L,0.495,191.0,2026-10-12T14:29:39,revisar,volume pedida [1.0] e o produto traz [5.0],1160
 1011,hddistribuidora.com,https://hddistribuidora.com/produto/cif-limpeza-profissional-desinfetante-super-concentrado-marine-5l/,Cif Limpeza Profissional Desinfetante Super Concentrado 5L,0.769,115.0,2026-10-12T14:29:51,aceito,,125272
