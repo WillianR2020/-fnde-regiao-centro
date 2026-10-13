@@ -26,7 +26,12 @@ e a sede do fornecedor decide o frete:
 | Sede do fornecedor | Frete | PREÇO FINAL | Entra quando |
 |---|---|---|---|
 | em GO | não é calculado (`FRETE_DISPENSADO`) | preço do produto | sempre (passou no CNAE) |
-| fora de GO | cotado para o CEP de GO | produto + frete para GO | a entrega em GO foi **confirmada** por cotação |
+| fora de GO | cotado para o CEP de GO, em VALOR FRETE | preço do produto (o frete fica à parte) | a entrega em GO foi **confirmada** por cotação |
+
+**PREÇO FINAL é só o preço do produto** (com a promoção da loja, sem desconto de PIX), nunca somado ao
+frete (decisão de 13/10/2026). O frete para GO vai em VALOR FRETE; o total
+produto + frete (`montar_entrega.preco_total`) só desempata a escolha
+dos 5.
 
 Fornecedor de fora de GO com frete "sob consulta", sem cotação ou com
 recusa **não entra**: não há como confirmar que ele entrega no estado.
@@ -43,7 +48,7 @@ Exceção: **frete possível de coletar**. Se a página tem calculadora de
 frete (o CEP entrou) mas o robô não leu o valor, ou a simulação VTEX
 falhou, a observação leva `FRETE_A_COLETAR` e o registro é salvo. Na
 entrega a linha sai em amarelo, com VALOR FRETE em branco para alguém
-preencher e PREÇO FINAL como fórmula (`=preço+N(VALOR FRETE)`). Ela só
+preencher; PREÇO FINAL é só o produto, como em toda linha. Ela só
 ocupa vaga que as linhas completas deixaram, e conta em
 `pendencias.csv` (coluna `frete_a_coletar`). A retomada da coleta pula a
 linha amarela, que é completa para a entrega; depois de corrigir a
@@ -83,14 +88,14 @@ Fornecedores entram por `data/raw/leads/`: primeiro as sugestões da própria
 pesquisa (`sugestoes_sead_go.csv`), depois a `lista_sites.xlsx` herdada da
 prospecção anterior.
 
-Template de saída: `data/raw/FNDE_output.xlsx` (15 colunas) + uma 16ª coluna `PRINT`.
+Template de saída: `data/raw/FNDE_output.xlsx` (15 colunas) + uma 16ª coluna `PRINT`, exatamente como o modelo `EQUIPAMENTO.xlsx` da rodada Sul (confirmado em 13/10/2026).
 
 ## Regras invioláveis
 
 1. **Só entra fornecedor com CNAE principal na divisão 46** (atacado). Divisão 47 com 46 secundário entra com `flag_atacarejo = SIM`. Situação cadastral diferente de ATIVA reprova.
    **Exceção decidida pelo grupo do Sul em 23/09/2026 (herdada; confirmar se vale para a SEAD-GO):** as classes **47.53-9** (eletrodomésticos e equipamentos de áudio e vídeo) e **47.59-8** (artigos de uso doméstico n.e.) entram mesmo **sem** CNAE 46 secundário, também com `flag_atacarejo = SIM`. O motivo é a categoria EQUIPAMENTO — fogão industrial, freezer e balança são vendidos por loja registrada nessas classes, e reprová-las deixava a categoria sem fornecedor para os 5 preços por item. A lista está em `CLASSES_VAREJO_ACEITAS`, comparada por classe (5 dígitos), então pega 4759-8/01 e 4759-8/99 de uma vez.
    **Quem só entrou pela exceção só é varrido no canal `--varejista`** (ver "Dois canais" abaixo): uma loja de eletrodoméstico não é fonte de EPI nem de uniforme.
-2. **Atender Goiás é critério; a sede decide como se prova.** Sede em GO atende GO e dispensa o frete. Sede em outro estado entra só com entrega em GO confirmada por cotação, e o frete é somado ao preço. Na etapa 1, reprovação exige **recusa** da loja — timeout ou site fora do ar deixa PENDENTE; na montagem, linha de fora de GO sem frete cotado não entra.
+2. **Atender Goiás é critério; a sede decide como se prova.** Sede em GO atende GO e dispensa o frete. Sede em outro estado entra só com entrega em GO confirmada por cotação, e o frete vai à parte, em VALOR FRETE. Na etapa 1, reprovação exige **recusa** da loja — timeout ou site fora do ar deixa PENDENTE; na montagem, linha de fora de GO sem frete cotado não entra.
 3. **Nenhum site é coletado sem estar em `data/interim/fornecedores_master.csv` com status APROVADO.**
 4. **O site é a unidade de execução**, não o item nem a categoria. Um processo por domínio, sempre.
 5. **Coleta e montagem são programas separados.** O coletor não conhece o template do FNDE; o montador não abre navegador.
@@ -369,6 +374,14 @@ Valor de frete em linha própria ("Envio:" / "Transportadora" / "Valor:" /
 "R$ 77,36", Gimba) herda o rótulo das linhas de cima que não têm preço.
 O campo de CEP espera 0,8 s entre a última tecla e o clique: campo com
 debounce (Hyvä) calculava com o CEP vazio.
+O CEP digitado é conferido no campo e redigitado mais devagar se a
+máscara engoliu teclas (Cauê ficava "7493_-___"); campo que só aparece
+depois do carregamento (simulador VTEX IO da LF) é procurado de novo
+após a rede parar. No print, se o frete não apareceu na tela, a captura
+tenta mais uma vez: a cotação da planilha pode ter vindo de outra
+abertura da página ou da API, e o print tem que mostrar o frete.
+"Entrega para credenciado R$ 0,00" (HD) conta como retirada: não é
+entrega em GO.
 
 Preço lido do texto (sem JSON-LD nem metatag) segue três regras, porque
 loja sem `<del>` escreve "De R$ 23,41 … economize R$ 1,99 … Por R$
@@ -376,6 +389,33 @@ loja sem `<del>` escreve "De R$ 23,41 … economize R$ 1,99 … Por R$
 ganha de tudo; sem ele, "De R$" e "economize R$" são ignorados; e o
 "De R$" vira o preço riscado. Valor só casa com milhar em grupos de 3:
 "R$ 17.9117,91" (dois spans colados) não é número.
+
+**O preço é o normal, nunca o de forma de pagamento** (13/10/2026).
+Desconto de PIX, boleto ou "à vista" não entra: quando o valor lido vem
+seguido de "à vista", "no PIX", "boleto" ou "desconto" e a ficha mostra
+um preço maior com cara de cartão (até 25% acima, ou a parcela sem juros
+vezes o número), vale o do cartão
+(`pagina_produto.preco_sem_desconto_de_pagamento`, para qualquer origem
+do preço: há JSON-LD que traz o à vista). Dutra "Por R$ 177,56 DESCONTO
+DE 5% no PIX (já aplicado) / R$ 186,90 em 3x" -> 186,90. A Gimba fica
+como está: "R$ 19,99 no PIX (3% desconto)" é o único preço da ficha e é
+o mesmo do card da busca. Promoção da loja ("de R$ X por R$ Y")
+segue o modelo EQUIPAMENTO.xlsx (confirmado em 13/10/2026): Preço
+PRODUTO = X, VALOR DESCONTO = X - Y, OBS Desconto "preco de X por Y",
+PREÇO FINAL = Y. JSON-LD com o preço cheio e a tela com "de X por Y"
+(Gimba) dá Y, com X de riscado. Com variação escolhida na tela
+(`escolher_variacoes`), vale o preço da tela, não o JSON-LD do produto
+pai -- o print mostra a variação.
+
+**O print não pode ter nada na frente.** `captura.limpar_tela` roda logo
+antes da foto: aceita o banner de cookies, fecha balão de "Mais tarde",
+volta ao topo e esconde todo elemento fixo por cima da página (cookies,
+janela de cupom, chat, WhatsApp, fundo escuro de modal, cabeçalho fixo
+que a rolagem deixava no meio da imagem). Ficam a barra do topo e o
+que mostra o frete. Esc não é usado: fecharia a janela de frete.
+`OCR` de conferência: o Windows lê os prints sem instalar nada
+(`Windows.Media.Ocr`), útil para checar se o preço da planilha aparece
+na imagem.
 Todo contexto do navegador sai de `captura.novo_contexto()`,
 com user-agent de Chrome comum: duas distribuidoras reais barravam o
 "HeadlessChrome" com 403.
@@ -537,6 +577,12 @@ outro jeito vai em `matching.SINONIMOS_DO_NOME` ("botina" vale por
 "calçado", "piaçava" por "cerdas duras"). Sem isso, "Botina de Segurança
 Antiderrapante" ficava em 49 e nem chegava à revisão. Número de degraus é medida (família `degraus`), e
 "1.600 W" é mil e seiscentos (ponto de milhar), não 1,6.
+
+Especificação trocada por quem pediu a pesquisa vai em
+`data/raw/ajustes_itens.csv` (id_item, descricao, item_curto, motivo,
+decidido_em): a descrição nova é o que o matching lê, e o nome do item
+na entrega só muda se `item_curto` vier preenchido. 13/10/2026: o álcool
+54% do 1001 pode ser 46,2% (46° INPM confere com 46,2 pela folga de 2%).
 
 `matching.avaliar()` devolve score **e** decisão; `pontuar()` devolve só o
 número. Use `avaliar()`: reprovar é decisão, não é um número.

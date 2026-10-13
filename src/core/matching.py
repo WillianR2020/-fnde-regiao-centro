@@ -396,9 +396,41 @@ def _tem_o_nome(grupos: list[set[str]], titulo: str) -> bool:
     return all(any(presente(a) for a in grupo) for grupo in grupos)
 
 
+# Produto que é acessório DO item, não o item: "Dispenser para Papel
+# Higiênico Rolão" para o papel rolão (1035), "Porta Sabão em Pó" para o
+# sabão (1039), "Kit Lava Jato Avental, Óculos, Luva e Bota" para o
+# avental (1116). O título traz o nome inteiro do item e o fuzzy dava
+# 100. Só vale quando a primeira palavra do título é a do acessório e o
+# item não a usa ("DISPENSADOR PARA PAPEL TOALHA" pede mesmo o dispenser).
+ACESSORIOS = {
+    "dispenser": {"dispenser", "dispensador", "dosador"},
+    "dispensador": {"dispenser", "dispensador", "dosador"},
+    "porta": {"porta"},
+    "suporte": {"suporte"},
+    "refil": {"refil"},
+    "kit": {"kit", "conjunto", "completo"},
+    "capa": {"capa"},
+    "reservatorio": {"reservatorio"},
+}
+
+
+def acessorio_do_item(descricao_item: str, titulo_produto: str) -> str:
+    """A palavra de acessório que abre o título e que o item não pede, ou ""."""
+    palavras = re.findall(r"[a-z]+", unidecode(str(titulo_produto or "")).lower())
+    if not palavras or palavras[0] not in ACESSORIOS:
+        return ""
+    item = set(re.findall(r"[a-z]+", unidecode(str(descricao_item or "")).lower()))
+    return "" if item & ACESSORIOS[palavras[0]] else palavras[0]
+
+
 def avaliar(descricao_item: str, titulo_produto: str) -> Avaliacao:
     """Score + decisão. Use esta função, não `pontuar` sozinha."""
     base = fuzz.token_set_ratio(normalizar(descricao_item), normalizar(titulo_produto))
+    acessorio = acessorio_do_item(descricao_item, titulo_produto)
+    if acessorio:
+        return Avaliacao(base, "descartado",
+                         [f"'{acessorio}' é acessório, o item não pede {acessorio}"],
+                         "ausente", "irrelevante")
     grupos = nome_do_item(descricao_item)
     if grupos and _tem_o_nome(grupos, titulo_produto):
         base = max(base, SCORE_NOME_DO_ITEM)

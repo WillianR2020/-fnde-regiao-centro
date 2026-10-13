@@ -179,3 +179,13 @@ def test_valor_puro_nao_herda_rotulo_de_outra_opcao():
     valor, _ = frete_do_texto(
         "Produto", "Produto\nRetirar na loja\nR$ 0,00\nPAC\nR$ 41,30")
     assert valor == 41.30
+
+
+def test_entrega_para_credenciado_nao_e_frete():
+    """HD Distribuidora: "Entrega para credenciado R$ 0,00" vinha como frete grátis."""
+    depois = ("Produto\nENTREGA\nVALOR\nEntrega para credenciado\nR$0,00\n"
+              "Jadlog Package (Melhor Envio) (5 a 7 dias úteis)\nR$154,81\n"
+              "Correios Pac (Melhor Envio) (7 a 9 dias úteis)\nR$211,30")
+    valor, obs = frete_do_texto("Produto", depois)
+    assert valor == 154.81
+    assert "Jadlog" in obs

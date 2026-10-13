@@ -25,7 +25,8 @@ itens e as entradas de fornecedores (ver
 - **UF:** só GO. O DF saiu da pesquisa em 09/10/2026.
 - **Por item:** 5 preços de 5 fornecedores distintos que atendem GO.
   - Sede em GO: sem cálculo de frete; PREÇO FINAL = preço do produto.
-  - Sede fora de GO: frete para GO cotado e **somado** ao preço; só entra
+  - Sede fora de GO: frete para GO cotado e mostrado **à parte** em VALOR
+    FRETE (PREÇO FINAL é só o produto, sem desconto de PIX, decisões de 13/10/2026); só entra
     se a entrega em GO for confirmada (frete "sob consulta" não serve).
 - **Formato:** o template de 15 colunas em `data/raw/FNDE_output.xlsx`,
   mais a 16ª coluna `PRINT`. Há um exemplo preenchido (da rodada Sul) em
@@ -128,7 +129,7 @@ categoria inteira.**
 | UFs / CEPs | PR, SC, RS (`CEPS_SUL`) | só GO desde 09/10/2026 (`UF_PESQUISA`, `CEPS_CENTRO`) |
 | Campo de entrega | `entrega_sul` | `entrega_centro` (modelo e coluna do master) |
 | Regra de reprovação | recusa em PR, SC e RS | recusa em GO, para sede fora de GO |
-| Frete | sempre cotado e mostrado à parte | sede em GO: não calculado; fora de GO: somado ao PREÇO FINAL |
+| Frete | sempre cotado e mostrado à parte | sede em GO: não calculado; fora de GO: cotado e mostrado à parte |
 | CEP de controle (grátis nacional) | Av. Paulista, fora do Sul | o mesmo, que também está fora do Centro |
 | Lista de itens | Lista de Equipamentos FNDE (144) | Pesquisa SEAD-GO Limpeza Predial (124) |
 | Itens manuais | COMBUSTÍVEL, SAÚDE OCUPACIONAL | + AUXÍLIOS (passagem e ASO) |

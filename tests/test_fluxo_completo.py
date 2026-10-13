@@ -220,9 +220,12 @@ def test_entrega_sai_com_as_16_colunas_e_os_prints_embutidos(loja):
 
     coluna = {nome: n + 1 for n, nome in enumerate(montar_entrega.COLUNAS)}
     assert ws.cell(row=2, column=coluna["UF"]).value == "GO"
-    # Sede fora de GO: o frete para GO entra somado no PREÇO FINAL.
+    # Sede fora de GO: o frete para GO vai à parte. Promoção como no
+    # modelo EQUIPAMENTO.xlsx: de 229,90 por 189,90.
     assert ws.cell(row=2, column=coluna["VALOR FRETE"]).value == 24.9
-    assert ws.cell(row=2, column=coluna["PREÇO FINAL"]).value == 214.8
+    assert ws.cell(row=2, column=coluna["Preço PRODUTO"]).value == 229.9
+    assert ws.cell(row=2, column=coluna["VALOR DESCONTO"]).value == 40.0
+    assert ws.cell(row=2, column=coluna["PREÇO FINAL"]).value == 189.9
 
 
 @sem_navegador
@@ -253,3 +256,5 @@ def test_sede_em_go_coleta_sem_frete_e_entra_so_com_o_preco(loja):
     coluna = {nome: n + 1 for n, nome in enumerate(montar_entrega.COLUNAS)}
     assert ws.cell(row=2, column=coluna["PREÇO FINAL"]).value == 189.9
     assert ws.cell(row=2, column=coluna["VALOR FRETE"]).value is None
+    assert ws.cell(row=2, column=coluna["OBS FRETE"]).value == (
+        "Fornecedor na mesma UF: frete não se aplica (GO)")

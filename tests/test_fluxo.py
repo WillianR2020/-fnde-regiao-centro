@@ -355,10 +355,9 @@ def test_por_padrao_ainda_garimpa_no_site(cliente_falso):
     assert cliente.pedidos          # tentou ler o site
 
 
-def test_frete_a_coletar_sai_marcado_e_com_formula(projeto):
+def test_frete_a_coletar_sai_marcado(projeto):
     """Fora de GO, calculadora no site, valor não lido: a linha sai na
-    planilha com VALOR FRETE em branco e PREÇO FINAL somando o que for
-    digitado ali."""
+    planilha com VALOR FRETE em branco e PREÇO FINAL só com o produto."""
     import json
 
     from openpyxl import load_workbook
@@ -379,5 +378,5 @@ def test_frete_a_coletar_sai_marcado_e_com_formula(projeto):
     ws = load_workbook(projeto / "data/output/UTENSILIOS.xlsx").active
     col = {nome: n for n, nome in enumerate(montar_entrega.COLUNAS, start=1)}
     assert ws.cell(2, col["VALOR FRETE"]).value is None
-    assert ws.cell(2, col["PREÇO FINAL"]).value == "=49.9+N(N2)"
+    assert ws.cell(2, col["PREÇO FINAL"]).value == 49.9
     assert ws.cell(2, col["OBS FRETE"]).value.startswith("FRETE A COLETAR")

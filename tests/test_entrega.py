@@ -14,7 +14,7 @@ import pytest
 
 from src.core.frete import (FRETE_DISPENSADO, SEM_ENTREGA, houve_recusa,
                              sede_na_uf_da_pesquisa)
-from src.export.montar_entrega import preco_total, problema
+from src.export.montar_entrega import preco_do_produto, preco_total, problema
 from src.models import CEPS_CENTRO, UF_PESQUISA, Fornecedor, Status
 from src.runners.etapa1_validar import UFS_CENTRO, decidir_entrega
 
@@ -131,10 +131,19 @@ def test_frete_em_branco_de_fora_nao_entra(registro):
     assert "não confirmada" in problema(registro)
 
 
-def test_de_fora_com_frete_entra_e_soma_o_frete(registro):
+def test_preco_final_e_o_da_promocao_como_no_modelo(registro):
+    """Modelo EQUIPAMENTO.xlsx: "de R$ 219,88 por R$ 186,90" -> 186,90."""
+    registro["preco_produto"] = 219.88
+    registro["preco_final"] = 186.90
+    assert preco_do_produto(registro) == 186.90
+
+
+def test_de_fora_com_frete_entra_e_frete_fica_a_parte(registro):
+    """PREÇO FINAL é só o produto; o frete só pesa no desempate."""
     registro["valor_frete"] = 10.1
     registro["obs_frete"] = "PAC 7 dias"
     assert problema(registro) == ""
+    assert preco_do_produto(registro) == 24.9
     assert preco_total(registro) == 35.0
 
 

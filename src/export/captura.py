@@ -162,18 +162,28 @@ def capturar(
 
         if cep:
             carrinho = abrir_carrinho_se_preciso(pagina, url)
-            preenchido, _, _ = preencher_e_esperar_frete(
-                pagina, cep, seletor_cep, seletor_resultado,
-                espera_ms=ESPERA_CARRINHO_MS if carrinho else ESPERA_MAX_FRETE_MS,
-            )
+            espera = ESPERA_CARRINHO_MS if carrinho else ESPERA_MAX_FRETE_MS
+            preenchido, antes, depois = preencher_e_esperar_frete(
+                pagina, cep, seletor_cep, seletor_resultado, espera_ms=espera)
             if not preenchido:
                 log.warning("nao achei campo de CEP em %s; print sai sem frete", url)
+            elif not _frete_apareceu(antes, depois):
+                # A cotação da planilha pode ter vindo de outra abertura
+                # (ou da API): o print tem que mostrar o frete também. Loja
+                # que ainda montava a página apagou o CEP digitado (LF).
+                log.info("frete nao apareceu no print de %s; tentando de novo", url)
+                pagina.wait_for_timeout(3000)
+                _, antes2, depois2 = preencher_e_esperar_frete(
+                    pagina, cep, seletor_cep, seletor_resultado, espera_ms=espera)
+                if not _frete_apareceu(antes2, depois2) and not _frete_apareceu(antes, depois2):
+                    log.warning("print de %s sai sem o frete na tela", url)
         else:
             try:
                 pagina.wait_for_load_state("networkidle", timeout=10000)
             except Exception:  # loja com polling eterno: fotografa o que tem
                 pass
 
+        limpar_tela(pagina)
         pagina.screenshot(path=str(destino), full_page=True)
     except PrintIndisponivel:
         raise
@@ -187,6 +197,13 @@ def capturar(
         raise PrintIndisponivel(f"print saiu vazio: {destino}")
 
     return destino
+
+
+def _frete_apareceu(antes: str, depois: str) -> bool:
+    from src.core.pagina_produto import frete_do_texto
+
+    valor, obs = frete_do_texto(antes, depois)
+    return valor is not None or bool(obs)
 
 
 def abrir_carrinho_se_preciso(pagina, url: str) -> bool:
@@ -234,6 +251,16 @@ def preencher_e_esperar_frete(
 
     antes = pagina.evaluate(TEXTO)
     campo = _preencher_cep(pagina, cep, seletor_cep)
+    if campo is None:
+        # Loja VTEX IO (LF Máquinas) só monta o simulador de frete depois
+        # de a página terminar de carregar.
+        try:
+            pagina.wait_for_load_state("networkidle", timeout=10000)
+        except Exception:
+            pass
+        pagina.wait_for_timeout(2000)
+        antes = pagina.evaluate(TEXTO)
+        campo = _preencher_cep(pagina, cep, seletor_cep)
     if campo is None:
         return False, antes, antes
 
@@ -305,6 +332,26 @@ SEGUNDO_CAMPO_CEP = """(campo) => {
 }"""
 
 
+def _digitar_conferindo(campo, digitos: str) -> None:
+    """Digita o CEP e confere se ele ficou inteiro no campo.
+
+    Campo com máscara que ainda está montando engole as primeiras teclas:
+    na Distribuidora Cauê o campo ficava "7493_-___" e o print saía sem
+    frete. Tenta de novo, mais devagar, até duas vezes.
+    """
+    for atraso in (40, 120, 250):
+        campo.fill("", timeout=5000)
+        campo.click(timeout=3000)
+        campo.press_sequentially(digitos, delay=atraso, timeout=15000)
+        try:
+            lido = "".join(c for c in campo.input_value(timeout=2000) if c.isdigit())
+        except Exception:
+            return
+        if lido == digitos:
+            return
+        log.info("CEP ficou '%s' no campo; digitando de novo mais devagar", lido)
+
+
 def _preencher_cep(pagina, cep: str, seletor_cep: str = ""):
     """Preenche o primeiro campo de CEP VISÍVEL e pede o cálculo.
 
@@ -332,7 +379,7 @@ def _preencher_cep(pagina, cep: str, seletor_cep: str = ""):
                     segundo.fill("", timeout=5000)
                     segundo.press_sequentially(digitos[5:], delay=40, timeout=10000)
                 else:
-                    campo.press_sequentially(cep, delay=40, timeout=10000)
+                    _digitar_conferindo(campo, digitos)
                 # Campo com debounce (Alpine/Hyvä) só passa o valor adiante
                 # um instante depois da última tecla; o clique imediato
                 # calculava com o CEP vazio e só trazia "retirada".
@@ -384,9 +431,47 @@ def escolher_variacoes(pagina) -> int:
     return escolhidas
 
 
-def _aceitar_cookies(pagina) -> None:
+BOTOES_DE_FECHAR = ("Aceitar", "Aceito", "Permitir", "Concordo", "Entendi", "Prosseguir",
+                    "Mais tarde", "Agora não", "Não, obrigad", "OK")
+# Logo antes da foto, sem "OK": seria o botão do CEP, e o frete sumiria
+# para ser recalculado bem na hora do print.
+BOTOES_ANTES_DO_PRINT = BOTOES_DE_FECHAR[:-1]
+
+# Tudo que fica por cima da página no print: banner de cookies (Gimba,
+# embaixo; Goiás Ferramentas, painel à esquerda com fundo escuro sobre o
+# preço), janela de cupom, chat, botão de WhatsApp, cabeçalho fixo que
+# a rolagem deixou no meio da imagem (Casa do Saco de Lixo). Elemento
+# fixo é escondido, menos a barra do topo da página e o que mostra o
+# frete -- há loja que cota o CEP numa janela.
+ESCONDER_SOBREPOSICOES = r"""() => {
+  window.scrollTo(0, 0);
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const frete = /74933|frete|sedex|\bpac\b|transportadora|prazo de entrega/i;
+  let escondidos = 0;
+  for (const e of document.querySelectorAll('body *')) {
+    const st = getComputedStyle(e);
+    if (st.position !== 'fixed' && st.position !== 'sticky') continue;
+    if (st.display === 'none' || st.visibility === 'hidden') continue;
+    const r = e.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) continue;
+    const area = (r.width * r.height) / (vw * vh);
+    const barraDoTopo = r.top <= 5 && r.height < 220 && area < 0.4;
+    if (barraDoTopo && st.position === 'sticky') continue;
+    if (barraDoTopo && !/cookie|privacidade|lgpd/i.test(e.innerText || '')) continue;
+    if (frete.test(e.innerText || '') && area < 0.6) continue;
+    e.style.setProperty('display', 'none', 'important');
+    escondidos++;
+  }
+  for (const e of [document.documentElement, document.body]) {
+    if (getComputedStyle(e).overflow === 'hidden') e.style.setProperty('overflow', 'visible', 'important');
+  }
+  return escondidos;
+}"""
+
+
+def _aceitar_cookies(pagina, botoes=BOTOES_DE_FECHAR) -> None:
     """Banner de cookies costuma cobrir o preço. Tenta fechar, sem insistir."""
-    for texto in ("Aceitar", "Aceito", "Concordo", "Entendi", "OK"):
+    for texto in botoes:
         try:
             botao = pagina.get_by_role("button", name=texto, exact=False).first
             if botao.count() and botao.is_visible():
@@ -394,3 +479,32 @@ def _aceitar_cookies(pagina) -> None:
                 return
         except Exception:  # noqa: PERF203
             continue
+    # Balão que não é <button> ("Mais tarde" da Dutra): só textos que
+    # não existem em ficha de produto, clicados pelo texto exato.
+    for texto in ("Mais tarde", "Agora não", "Não, obrigado"):
+        try:
+            alvo = pagina.get_by_text(texto, exact=True).first
+            if alvo.count() and alvo.is_visible():
+                alvo.click(timeout=2000)
+        except Exception:  # noqa: PERF203
+            continue
+
+
+def limpar_tela(pagina) -> None:
+    """Tira da frente do print o que cobre produto, preço e frete.
+
+    Banner e janela costumam chegar depois do carregamento, então isto
+    roda logo antes da foto: fecha pelo botão quando dá (o site para de
+    escurecer a página) e esconde o que continua por cima. Esc não:
+    fecharia também a janela de frete.
+    Esconder não muda preço nem frete -- só o que aparece na imagem.
+    """
+    _aceitar_cookies(pagina, BOTOES_ANTES_DO_PRINT)
+    try:
+        escondidos = pagina.evaluate(ESCONDER_SOBREPOSICOES)
+        pagina.wait_for_timeout(500)
+    except Exception as e:  # o print sai mesmo assim; só registra
+        log.warning("nao consegui limpar a tela de %s: %s", pagina.url, e)
+        return
+    if escondidos:
+        log.info("%s: %d sobreposicao(oes) escondida(s) antes do print", pagina.url, escondidos)

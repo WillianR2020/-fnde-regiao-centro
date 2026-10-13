@@ -32,7 +32,8 @@ from src.models import CEPS_CENTRO, UF_PESQUISA
 
 log = obter(__name__)
 
-# As 15 colunas do template FNDE_output.xlsx, mais PRINT.
+# As 15 colunas do template FNDE_output.xlsx, mais PRINT -- igual ao
+# modelo EQUIPAMENTO.xlsx da rodada Sul (confirmado em 13/10/2026).
 COLUNAS = [
     "Categoria", "Código FGV", "Item", "UF", "Data coleta", "Nome Empresa",
     "CNPJ", "FONTE", "PRODUTO PESQUISADO", "Preço PRODUTO", "VALOR DESCONTO",
@@ -111,9 +112,25 @@ def sede_em_go(candidato: dict) -> bool:
     return sede_na_uf_da_pesquisa(candidato.get("uf_sede"))
 
 
+def preco_do_produto(candidato: dict) -> float | None:
+    """O PREÇO FINAL da entrega: o produto, já com a promoção da loja.
+
+    Como no modelo EQUIPAMENTO.xlsx: "de R$ 219,88 por R$ 186,90" sai com
+    Preço PRODUTO 219,88, VALOR DESCONTO 32,98 e PREÇO FINAL 186,90. O
+    frete para GO fica na coluna VALOR FRETE, nunca somado aqui, e o
+    desconto de PIX/boleto já foi descartado na leitura da página
+    (decisões de 13/10/2026).
+    """
+    return _numero_ou_nada(candidato.get("preco_final") or candidato.get("preco_produto"))
+
+
+
 def preco_total(candidato: dict) -> float | None:
-    """O PREÇO FINAL da entrega: produto, mais o frete para GO se a sede é de fora."""
-    preco = _numero_ou_nada(candidato.get("preco_final") or candidato.get("preco_produto"))
+    """O que a SEAD-GO paga: produto, mais o frete para GO se a sede é de fora.
+
+    Só desempata a escolha dos 5; não vai para a planilha.
+    """
+    preco = preco_do_produto(candidato)
     if preco is None:
         return None
     if sede_em_go(candidato):
@@ -349,12 +366,14 @@ def _linha(coleta: dict, item, fornecedores: dict) -> dict:
         "Preço PRODUTO": _numero_ou_nada(coleta.get("preco_produto")),
         "VALOR DESCONTO": _numero_ou_nada(coleta.get("valor_desconto")),
         "OBS Desconto": coleta.get("obs_desconto", ""),
-        # Produto (já com desconto) + frete para GO quando a sede é de
-        # fora. Sede em GO: só o produto, e VALOR FRETE fica vazio.
-        "PREÇO FINAL": preco_total(coleta),
+        # Só o produto. O frete para GO, quando a sede é de fora, vai à
+        # parte em VALOR FRETE; sede em GO, fica vazio.
+        "PREÇO FINAL": preco_do_produto(coleta),
         "VALOR FRETE": (None if sede_em_go(coleta)
                         else _numero_ou_nada(coleta.get("valor_frete"))),
-        "OBS FRETE": coleta.get("obs_frete", ""),
+        # Sede em GO: o mesmo texto do modelo EQUIPAMENTO.xlsx.
+        "OBS FRETE": (f"Fornecedor na mesma UF: frete não se aplica ({UF_PESQUISA})"
+                      if sede_em_go(coleta) else coleta.get("obs_frete", "")),
         "PRINT": "",  # a imagem entra ancorada; o texto ficaria atrás dela
     }
 
@@ -363,18 +382,12 @@ def _marcar_frete_a_coletar(ws, numero: int, coleta: dict) -> None:
     """Linha de fora de GO cujo frete o robô não leu, mas a loja calcula.
 
     VALOR FRETE fica em branco e amarelo para alguém preencher com o
-    CEP de GO; PREÇO FINAL vira fórmula, então soma o frete sozinho
-    assim que ele for digitado.
+    CEP de GO. PREÇO FINAL continua sendo só o produto.
     """
     from openpyxl.styles import Font, PatternFill
-    from openpyxl.utils import get_column_letter
 
     amarelo = PatternFill("solid", fgColor="FFEB9C")
     col = {nome: n for n, nome in enumerate(COLUNAS, start=1)}
-    frete = get_column_letter(col["VALOR FRETE"])
-    preco = _numero_ou_nada(coleta.get("preco_final") or coleta.get("preco_produto")) or 0
-
-    ws.cell(numero, col["PREÇO FINAL"], f"={preco}+N({frete}{numero})").fill = amarelo
     ws.cell(numero, col["VALOR FRETE"]).fill = amarelo
     obs = ws.cell(numero, col["OBS FRETE"],
                   f"FRETE A COLETAR: o site calcula frete, mas o robô não leu o valor. "

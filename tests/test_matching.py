@@ -297,3 +297,25 @@ def test_sinonimos_do_nome_de_limpeza():
     # palha não é cerda dura
     assert matching.avaliar("VASSOURA DE CERDAS DURAS - PARA ESFREGAR PISOS.",
                             "Vassoura de Palha Caipira").classificacao != "aceito"
+
+
+@pytest.mark.parametrize("item, titulo", [
+    ("PAPEL HIGIÊNICO ROLÃO - FOLHA SIMPLES, 300 M, EXTRA BRANCO", "Dispenser Papel Rolão 300M"),
+    ("SABÃO EM PÓ - BIODEGRADÁVEL; PARA ROUPA, PISO E LIMPEZA GERAL", "Porta Sabão em Pó Sanremo"),
+    ("SABONETE LÍQUIDO - PARA LAVAGEM DAS MÃOS, COM FRAGRÂNCIA",
+     "Dispenser Clean Velox Sabonete Líquido - Preto/Dark"),
+    ("AVENTAL DE PVC - IMPERMEÁVEL, PARA ATIVIDADES COM RISCO DE RESPINGOS",
+     "Kit Lava Jato Avental, Óculos, Luva e Bota de PVC"),
+])
+def test_acessorio_do_item_e_descartado(item, titulo):
+    assert matching.avaliar(item, titulo).classificacao == "descartado"
+
+
+@pytest.mark.parametrize("item, titulo", [
+    ("DISPENSADOR PARA PAPEL TOALHA - COMPATÍVEL COM PAPEL INTERFOLHADO",
+     "Dispenser Para Papel Toalha Interfolhas 2 Ou 3 Dobras"),
+    ("CARRO FUNCIONAL PARA LIMPEZA - COMPLETO, COM BALDE ESPREMEDOR",
+     "Kit Carro Funcional Completo para Limpeza Profissional"),
+])
+def test_acessorio_que_o_item_pede_continua(item, titulo):
+    assert matching.avaliar(item, titulo).classificacao != "descartado"

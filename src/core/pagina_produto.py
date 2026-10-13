@@ -42,6 +42,18 @@ DE_RISCADO = re.compile(r"(?<!partir )\bde:?\s*R\$\s*" + VALOR, re.IGNORECASE)
 ECONOMIA = re.compile(r"\b(?:economi\w*|poupe)\s*(?:de\s*)?:?\s*R\$\s*" + VALOR, re.IGNORECASE)
 # "Por R$ 17,91": quando a loja escreve, é o preço de venda.
 POR = re.compile(r"\bpor:?\s*R\$\s*" + VALOR, re.IGNORECASE)
+# Desconto por forma de pagamento não é o preço do produto. "R$ 177,56
+# DESCONTO DE 5% no Boleto ou PIX (já aplicado) / R$ 186,90 em 3x sem
+# juros" (Dutra), "R$ 80,61 À VISTA 3% DE DESCONTO / 2x de 41.55"
+# (Multiseg): o preço normal é o do cartão. Logo depois do valor lido:
+A_VISTA = re.compile(r"\bpix\b|boleto|[àa]\s+vista|desconto", re.IGNORECASE)
+# ... e o preço normal vem com cara de cartão perto dele.
+CARTAO = re.compile(r"cart[aã]o|juros|\b\d{1,2}\s*x\b|parcel|em\s+at[eé]", re.IGNORECASE)
+# "3x de R$ 62,30", "2x de 41.55": a parcela sem juros vezes o número.
+PARCELA = re.compile(r"\b(\d{1,2})\s*x\s*(?:de\s*)?(?:R\$\s*)?(\d{1,3}(?:\.\d{3})+,\d{2}|\d+[.,]\d{2})"
+                     r"(?![\d,.])(?![^\n]{0,15}com\s+juros)", re.IGNORECASE)
+# O preço do cartão fica a no máximo 25% do à vista (o maior visto: 11%).
+TETO_A_VISTA = 1.25
 
 # Frase de loja que respondeu e recusou o CEP. Vira o marcador de
 # core.frete, que é o que separa recusa de "não consegui cotar".
@@ -64,7 +76,9 @@ RE_ENVIO = re.compile(
 )
 # Não é entrega: filtro de preço, parcela, desconto à vista.
 RE_NAO_ENVIO = re.compile(r"filtrar|ate r\$|parcela|\b\d+x\b|juros|desconto|\bpix\b|boleto")
-RE_RETIRADA = re.compile(r"retir")
+# Retirada no balcão, e entrega a "credenciado" (HD Distribuidora: R$ 0,00
+# para parceiro, não para quem compra): não é entrega em GO.
+RE_RETIRADA = re.compile(r"retir|credenciad")
 
 # Preço escondido atrás de login/cadastro. Regra da pesquisa: site que
 # exige cadastro para mostrar preço é ignorado -- é obrigatório o preço
@@ -181,6 +195,50 @@ def _riscado_do_texto(texto) -> float | None:
     return _numero("R$ " + achado.group(1)) if achado else None
 
 
+def _valor(texto: str) -> float:
+    if "," not in texto:
+        return float(texto)
+    return float(texto.replace(".", "").replace(",", "."))
+
+
+def preco_sem_desconto_de_pagamento(preco: float, texto) -> float:
+    """O preço do cartão quando o valor lido é o de PIX, boleto ou à vista.
+
+    Só troca quando o texto logo depois do valor (até o próximo "R$")
+    diz que ele é à vista, e há um preço maior com cara de cartão até
+    25% acima. Gimba ("R$ 19,99 no PIX (3% desconto)", sem outro preço
+    na ficha) fica como está: lá o 19,99 é o preço normal, o mesmo do
+    card da busca.
+    """
+    texto = str(texto or "")
+    marcado = False
+    for achado in PRECO.finditer(texto):
+        if abs(_valor(achado.group(1)) - preco) > 0.005:
+            continue
+        depois = texto[achado.end():achado.end() + 80].split("R$")[0]
+        if A_VISTA.search(depois):
+            marcado = True
+            break
+    if not marcado:
+        return preco
+
+    riscados = {_valor(v) for v in DE_RISCADO.findall(texto)}
+    candidatos = []
+    for achado in PRECO.finditer(texto):
+        valor = _valor(achado.group(1))
+        if not preco * 1.005 < valor <= preco * TETO_A_VISTA or valor in riscados:
+            continue
+        perto = texto[max(0, achado.start() - 40):achado.end() + 60]
+        depois = texto[achado.end():achado.end() + 80].split("R$")[0]
+        if CARTAO.search(perto) and not A_VISTA.search(depois):
+            candidatos.append(valor)
+    for vezes, parcela in PARCELA.findall(texto):
+        total = round(int(vezes) * _valor(parcela), 2)
+        if preco * 1.005 < total <= preco * TETO_A_VISTA:
+            candidatos.append(total)
+    return min(candidatos) if candidatos else preco
+
+
 def _sem_acento(texto: str) -> str:
     from unidecode import unidecode
 
@@ -264,6 +322,15 @@ def produto_da_ficha(ficha: dict, url: str) -> ProdutoBruto:
         if preco is not None:
             break
 
+    # Com uma variação escolhida na tela (Loja Integrada), o JSON-LD e a
+    # metatag ainda são do produto pai: na Casa do Saco de Lixo o JSON-LD
+    # dava R$ 60,90 e a variação do print custava R$ 37,90. Vale a tela.
+    if ficha.get("variacao_escolhida"):
+        na_tela = (_preco_por(ficha.get("preco_atual"))
+                   or _preco_de_venda(ficha.get("preco_atual")))
+        if na_tela is not None:
+            preco = na_tela
+
     if preco is None:
         preco = _numero(ficha.get("meta_preco"))
     if disponivel is None and ficha.get("meta_estoque"):
@@ -278,6 +345,15 @@ def produto_da_ficha(ficha: dict, url: str) -> ProdutoBruto:
         preco = _preco_de_venda(ficha.get("texto_area"))
     if preco is None:
         raise RespostaInvalida(f"pagina sem preco: {url}", url)
+    riscado_na_tela = (_riscado_do_texto(ficha.get("preco_atual"))
+                       or _riscado_do_texto(ficha.get("texto_area")))
+    if riscado_na_tela is not None and abs(riscado_na_tela - preco) < 0.005:
+        venda = (_preco_por(ficha.get("preco_atual")) or _preco_de_venda(ficha.get("preco_atual"))
+                 or _preco_de_venda(ficha.get("texto_area")))
+        if venda is not None and venda < preco:
+            preco = venda
+    # Vale para qualquer origem: há loja cujo JSON-LD traz o preço à vista.
+    preco = preco_sem_desconto_de_pagamento(preco, ficha.get("texto_area"))
 
     if disponivel is None:
         disponivel = _estoque_do_texto(ficha.get("texto_area") or "")
@@ -387,7 +463,7 @@ def _abrir(url: str):
     except Exception:  # loja com polling eterno: segue com o que tem
         pass
     _aceitar_cookies(pagina)
-    escolher_variacoes(pagina)
+    pagina.variacoes_escolhidas = escolher_variacoes(pagina)
     return contexto, pagina
 
 
@@ -395,6 +471,7 @@ def detalhar(url: str) -> ProdutoBruto:
     contexto, pagina = _abrir(url)
     try:
         ficha = pagina.evaluate(FICHA)
+        ficha["variacao_escolhida"] = bool(getattr(pagina, "variacoes_escolhidas", 0))
     finally:
         contexto.close()
     return produto_da_ficha(ficha, url)
