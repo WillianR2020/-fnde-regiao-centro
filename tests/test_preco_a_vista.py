@@ -29,6 +29,11 @@ URL = "https://loja.com.br/produto"
     # Casa dos Parafusos
     (827.23, "R$ 827,23\nà vista com 10% de desconto\nou R$ 919,20 em 12x de R$ 76,60 sem juros",
      919.20),
+    # NC Bella: o preço escrito ganha da parcela vezes 6 (162,96).
+    (154.85, "R$ 163,00\naté 6x de R$ 27,16 sem juros\nR$ 154,85 no pix com 5% de desconto\n"
+             "1x de R$ 163,00 sem juros\n6x de R$ 27,16 sem juros", 163.00),
+    # Supriflex: idem (3 x 8,22 = 24,66).
+    (22.21, "R$ 24,68\naté 3x de R$ 8,22 sem juros\nou R$ 22,21 via Pix", 24.68),
 ])
 def test_preco_a_vista_vira_preco_do_cartao(preco, texto, esperado):
     assert preco_sem_desconto_de_pagamento(preco, texto) == esperado

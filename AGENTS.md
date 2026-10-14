@@ -364,7 +364,10 @@ barata que aparece depois de preencher o CEP. Produto fora de estoque
 não entra na coleta. Produto com grade de variação (Loja Integrada: cor,
 espessura, quantidade) não calcula frete antes da escolha;
 `captura.escolher_variacoes` clica a primeira opção disponível de cada
-grade ao abrir a página, e preço, frete e print são os dessa variação. Cotação e print esperam o frete pela mesma rotina
+grade ao abrir a página, e preço, frete e print são os dessa variação.
+Na Tray a grade é `ul.lista_cor_variacao > li[data-variant-value]`
+(esgotado tem `sem_estoque`), e a calculadora responde "selecione as
+variações antes de calcular o frete" sem a escolha (Renascer EPI). Cotação e print esperam o frete pela mesma rotina
 (`captura.preencher_e_esperar_frete`), então a imagem mostra o valor da
 planilha. CEP em dois campos (5 + 3 dígitos, Tray antiga) é preenchido
 nos dois; o botão de calcular também é reconhecido pela classe (`frete`,
@@ -381,7 +384,12 @@ após a rede parar. No print, se o frete não apareceu na tela, a captura
 tenta mais uma vez: a cotação da planilha pode ter vindo de outra
 abertura da página ou da API, e o print tem que mostrar o frete.
 "Entrega para credenciado R$ 0,00" (HD) conta como retirada: não é
-entrega em GO.
+entrega em GO. Valor que vem **antes** do rótulo ("R$ 36,64" / "7 dias
+úteis" / "Correios PAC", Loja Integrada da Stars) pega o rótulo das
+duas linhas de baixo, só quando não há nada acima dele.
+"Produto indisponível no momento" / "Avise-me quando chegar" na tela
+ganha do JSON-LD "InStock": a Kalunga deixa o produto esgotado com
+preço de R$ 1,00 no JSON-LD.
 
 Preço lido do texto (sem JSON-LD nem metatag) segue três regras, porque
 loja sem `<del>` escreve "De R$ 23,41 … economize R$ 1,99 … Por R$
@@ -397,7 +405,12 @@ um preço maior com cara de cartão (até 25% acima, ou a parcela sem juros
 vezes o número), vale o do cartão
 (`pagina_produto.preco_sem_desconto_de_pagamento`, para qualquer origem
 do preço: há JSON-LD que traz o à vista). Dutra "Por R$ 177,56 DESCONTO
-DE 5% no PIX (já aplicado) / R$ 186,90 em 3x" -> 186,90. A Gimba fica
+DE 5% no PIX (já aplicado) / R$ 186,90 em 3x" -> 186,90. A parcela
+vezes o número só vale quando a ficha não escreve o preço do cartão:
+"R$ 163,00 / 6x de R$ 27,16" é 163,00, não 162,96 (NC Bella); e
+"6x de R$ 27,16" não é preço riscado. A área de compra que essas regras
+leem sai do h1 quando o seletor achado não tem preço (o `.summary` da
+Casa dos Parafusos era o widget de avaliações). A Gimba fica
 como está: "R$ 19,99 no PIX (3% desconto)" é o único preço da ficha e é
 o mesmo do card da busca. Promoção da loja ("de R$ X por R$ Y")
 segue o modelo EQUIPAMENTO.xlsx (confirmado em 13/10/2026): Preço

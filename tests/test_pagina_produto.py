@@ -189,3 +189,23 @@ def test_entrega_para_credenciado_nao_e_frete():
     valor, obs = frete_do_texto("Produto", depois)
     assert valor == 154.81
     assert "Jadlog" in obs
+
+
+def test_valor_do_frete_antes_do_rotulo():
+    """Loja Integrada (Stars): o valor vem antes do prazo e da transportadora."""
+    antes = "Escova Sanitária Com Suporte\nR$ 7,90\nCalcule o frete"
+    depois = antes + "\nR$ 36,64\n7 dias úteis\nCorreios PAC\nR$ 52,10\n5 dias úteis\nJadlog"
+    valor, obs = frete_do_texto(antes, depois)
+    assert valor == 36.64
+    assert "Correios PAC" in obs
+
+
+def test_tela_indisponivel_ganha_do_json_ld():
+    """Kalunga: JSON-LD InStock a R$ 1,00, tela "Produto indisponível no momento"."""
+    ficha = {"titulo": "Máscara descartável 3D",
+             "jsonld": [{"@type": "Product", "name": "Máscara descartável 3D",
+                          "offers": {"price": "1.00", "availability": "https://schema.org/InStock"}}],
+             "texto_area": "Máscara descartável 3D\nProduto indisponível no momento\n"
+                           "Avise-me quando chegar no Site"}
+    produto = produto_da_ficha(ficha, "https://www.kalunga.com.br/prod/x/1")
+    assert produto.disponivel is False

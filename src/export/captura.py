@@ -426,8 +426,41 @@ def escolher_variacoes(pagina) -> int:
                     break
             except Exception:  # noqa: PERF203
                 continue
+    if not escolhidas:
+        escolhidas = _escolher_variacoes_tray(pagina)
     if escolhidas:
         log.info("%s: %d grade(s) de variacao escolhida(s)", pagina.url, escolhidas)
+    return escolhidas
+
+
+# Tray: "Escolha Tamanho" em <ul class="lista_cor_variacao"><li
+# data-variant-value="43">, esgotado com a classe "sem_estoque". Sem a
+# escolha, a calculadora responde "Por favor, selecione as variações antes
+# de calcular o frete" (Renascer EPI, calçado do 1107). Grade dupla (cor e
+# depois tamanho) monta a segunda lista só depois do clique na primeira.
+VARIACAO_TRAY = "ul.lista_cor_variacao"
+
+
+def _escolher_variacoes_tray(pagina) -> int:
+    escolhidas = 0
+    for i in range(4):
+        listas = pagina.locator(VARIACAO_TRAY)
+        try:
+            if i >= listas.count():
+                break
+        except Exception:
+            break
+        opcoes = listas.nth(i).locator("li[data-variant-value]:not(.sem_estoque)")
+        for n in range(opcoes.count()):
+            opcao = opcoes.nth(n)
+            try:
+                if opcao.is_visible():
+                    opcao.click(timeout=3000)
+                    pagina.wait_for_timeout(1500)
+                    escolhidas += 1
+                    break
+            except Exception:  # noqa: PERF203
+                continue
     return escolhidas
 
 

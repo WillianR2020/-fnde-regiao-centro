@@ -37,7 +37,10 @@ PRECO = re.compile(r"R\$\s*" + VALOR)
 # "De R$ 56,80 / R$ 44,55": o primeiro valor do bloco é o riscado. Loja
 # que não usa <del> (PreveOeste, Dutra) só se distingue por esse "De".
 # "A partir de R$" é preço de verdade e fica.
-DE_RISCADO = re.compile(r"(?<!partir )\bde:?\s*R\$\s*" + VALOR, re.IGNORECASE)
+# "6x de R$ 27,16" é parcela, não riscado: senão o "1x de R$ 163,00" da
+# tabela de parcelas tirava o preço do cartão da disputa (NC Bella).
+DE_RISCADO = re.compile(r"(?<!partir )(?<!\dx )(?<!\dX )(?<!\d x )\bde:?\s*R\$\s*" + VALOR,
+                        re.IGNORECASE)
 # "economize R$ 1,99" é a diferença, não o preço.
 ECONOMIA = re.compile(r"\b(?:economi\w*|poupe)\s*(?:de\s*)?:?\s*R\$\s*" + VALOR, re.IGNORECASE)
 # "Por R$ 17,91": quando a loja escreve, é o preço de venda.
@@ -126,6 +129,15 @@ FICHA = """() => {
     for (let i = 0; i < 4 && acima.parentElement && acima.parentElement !== document.body; i++) {
       acima = acima.parentElement;
       if (temPreco(acima)) { area = acima; break; }
+    }
+  }
+  // O ".summary" pode ser de um widget de avaliações ("Seja o primeiro a
+  // avaliar", Casa dos Parafusos): sem preço até ali, a área sai do h1.
+  if (area && !temPreco(area) && h1) {
+    let x = h1;
+    for (let i = 0; i < 5 && x.parentElement && x.parentElement !== document.body; i++) {
+      x = x.parentElement;
+      if (temPreco(x)) { area = x; break; }
     }
   }
   area = area || document.body;
@@ -232,11 +244,17 @@ def preco_sem_desconto_de_pagamento(preco: float, texto) -> float:
         depois = texto[achado.end():achado.end() + 80].split("R$")[0]
         if CARTAO.search(perto) and not A_VISTA.search(depois):
             candidatos.append(valor)
+    if candidatos:
+        return min(candidatos)
+    # Parcela vezes número só quando a ficha não escreve o preço do
+    # cartão: "R$ 163,00 / 6x de R$ 27,16" daria 162,96 (arredondamento
+    # da parcela), e o print mostra 163,00 (NC Bella, Supriflex).
+    totais = []
     for vezes, parcela in PARCELA.findall(texto):
         total = round(int(vezes) * _valor(parcela), 2)
         if preco * 1.005 < total <= preco * TETO_A_VISTA:
-            candidatos.append(total)
-    return min(candidatos) if candidatos else preco
+            totais.append(total)
+    return min(totais) if totais else preco
 
 
 def _sem_acento(texto: str) -> str:
@@ -291,6 +309,12 @@ def _oferta(produto: dict) -> tuple[float | None, bool | None]:
             disponivel = "outofstock" not in estoque.lower().replace("_", "")
         return preco, disponivel
     return None, None
+
+
+# Frases que só aparecem quando ESTE produto não está à venda; ganham do
+# JSON-LD. "Avise-me" sozinho não entra: há loja com o botão na grade.
+INDISPONIVEL_NA_TELA = ("produto indisponivel", "indisponivel no momento",
+                        "avise-me quando chegar")
 
 
 def _estoque_do_texto(texto: str) -> bool | None:
@@ -357,6 +381,11 @@ def produto_da_ficha(ficha: dict, url: str) -> ProdutoBruto:
 
     if disponivel is None:
         disponivel = _estoque_do_texto(ficha.get("texto_area") or "")
+    elif disponivel and _sem_acento(ficha.get("texto_area") or "") and any(
+            f in _sem_acento(ficha.get("texto_area") or "") for f in INDISPONIVEL_NA_TELA):
+        # A Kalunga mantém o JSON-LD "InStock" (com preço de R$ 1,00) no
+        # produto que a tela mostra "Produto indisponível no momento".
+        disponivel = False
 
     riscado = (_numero(ficha.get("preco_riscado"))
                or _riscado_do_texto(ficha.get("preco_atual"))
@@ -409,6 +438,18 @@ def frete_do_texto(antes: str, depois: str) -> tuple[float | None, str]:
         # PAC logo abaixo.
         tem_texto = re.search(r"[a-z]{3}", _sem_acento(linha))
         rotulo = linha if tem_texto else rotulo
+        if not tem_texto and not acima:
+            # Loja Integrada (Stars) põe o valor primeiro: "R$ 36,64" /
+            # "7 dias úteis" / "Correios PAC". Sem nenhuma linha acima
+            # (um "Retirar na loja" acima decide, e não pode virar o PAC
+            # de baixo), desce até duas linhas curtas, parando na que tem
+            # valor.
+            abaixo = []
+            for seguinte in novas[i + 1:i + 3]:
+                if len(seguinte) >= 60 or PRECO.search(seguinte):
+                    break
+                abaixo.append(seguinte)
+            rotulo = " ".join([linha] + abaixo)
         sem = _sem_acento(rotulo)
         valores = PRECO.findall(linha)
         gratis = "gratis" in _sem_acento(linha) and not valores
