@@ -1,0 +1,7 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1023,epizeus.com.br,https://www.epizeus.com.br/estopa-trapo-de-malha-pano-de-limpeza-pacote-1kg,"Estopa Trapo de Malha, Pano de Limpeza (pacote 1kg)",0.64,19.9,2026-10-13T17:17:15,aceito,,['10575']
+1065,epizeus.com.br,https://www.epizeus.com.br/lixeira-contentor-de-lixo-com-rodas-240-l-cinza-modelo-europeu,Lixeira Contentor de Lixo com rodas 240 L Cinza - Modelo Europeu,0.487,714.3,2026-10-13T17:26:55,revisar,volume pedida [120.0] e o produto traz [240.0],
+1066,epizeus.com.br,https://www.epizeus.com.br/adesivo-para-lixeira-com-simbolo-reciclavel-plastico-12-6-x-19-5-x-15-5cm,"Adesivo para lixeira com símbolo reciclável (plástico) 12,6 x 19,5 x 15,5cm",0.72,6.9,2026-10-13T17:15:24,aceito,,['19299']
+1067,epizeus.com.br,https://www.epizeus.com.br/lixeira-ecologica-50l-vermelha-plastico,Lixeira ecológica 50L - Vermelha (Plástico),0.72,129.1,2026-10-13T17:23:03,revisar,volume pedida [20.0] e o produto traz [50.0],
+1104,epizeus.com.br,https://www.epizeus.com.br/camisa-de-malha-branca,Camisa de malha Branca,0.619,35.9,2026-10-13T17:14:53,revisar,,
+1105,epizeus.com.br,https://www.epizeus.com.br/calca-brim-pesado-cinza,Calça brim pesado Cinza,0.485,75.9,2026-10-13T17:22:04,revisar,,

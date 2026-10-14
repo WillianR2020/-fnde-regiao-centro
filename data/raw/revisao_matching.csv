@@ -508,3 +508,51 @@ id_item,dominio,url_produto,decisao,motivo,decidido_em
 1041,loja.plasticosipiranga.com.br,https://loja.plasticosipiranga.com.br/dispenser-clean-velox-sabonete-liquido-pretodark,descartado,"é dispenser, não o sabonete líquido",13/10/2026
 1116,trepis.com.br,https://www.trepis.com.br/kits/kit-lava-jato-avental-oculos-luva-e-bota-de-pvc,descartado,"kit com óculos, luva e bota; preço não é só do avental",13/10/2026
 1070,loja.casadosacodelixo.com.br,https://loja.casadosacodelixo.com.br/dispenser-para-papel-higienico-rolao-300m-toalha-interfolha-sabonete-liquido-2022-04-02-11-12-34,descartado,"a variação escolhida na página é a do papel cai-cai, não a do rolão 300 m",13/10/2026
+1035,kalunga.com.br,https://www.kalunga.com.br/prod/papel-higienico-folha-simples-8-rolos-de-300m-elite-plus-softys-fd-8-un/545998,aceito,"papel higiênico rolão folha simples 300 m, fardo com 8 rolos",13/10/2026
+1057,kalunga.com.br,https://www.kalunga.com.br/prod/balde-plastico-8-5l-240-sanremo-pt-1-un/003574,aceito,"balde plástico 8,5 L para o de 8 L",13/10/2026
+1114,kalunga.com.br,https://www.kalunga.com.br/prod/mascara-descartavel-3d-ouro-texstan-pt-1-un/549874,aceito,máscara descartável,13/10/2026
+1043,kalunga.com.br,https://www.kalunga.com.br/prod/saco-para-lixo-banheiro-34x40cm-branco-dover-rl-100-un/668262,descartado,"saco de banheiro 34x40 cm, não é 30 L",13/10/2026
+1046,kalunga.com.br,https://www.kalunga.com.br/prod/saco-para-lixo-50lt-preto-reciclado-polisac-14002949-dover-pt-100-un/668704,descartado,"saco de 50 L, item pede 100 L",13/10/2026
+1047,kalunga.com.br,https://www.kalunga.com.br/prod/saco-para-lixo-15lt-preto-basico-dover-rl-100-un/668232,descartado,"saco de 15 L, item pede 150 L",13/10/2026
+1091,kalunga.com.br,https://www.kalunga.com.br/prod/placa-de-sinalizacao-banheiro-masculino-pal-01270-plascony-pt-1-un/630441,descartado,"placa de banheiro masculino, item pede banheiro interditado dobrável",13/10/2026
+1043,renascerepi.com.br,https://www.renascerepi.com.br/descartaveis/avental/avental-polietileno-bco-pct-c100-un,descartado,"avental descartável, não é saco de lixo",13/10/2026
+1046,renascerepi.com.br,https://www.renascerepi.com.br/descartaveis/avental/avental-polietileno-bco-pct-c100-un,descartado,"avental descartável, não é saco de lixo",13/10/2026
+1047,renascerepi.com.br,https://www.renascerepi.com.br/descartaveis/avental/avental-polietileno-bco-pct-c100-un,descartado,"avental descartável, não é saco de lixo",13/10/2026
+1104,renascerepi.com.br,https://www.renascerepi.com.br/vestimenta/eletricista/camisa-risco-2-eletricista-vinilseg-ca-50298,descartado,"camisa NR10 risco 2 de eletricista, não é camiseta de uniforme comum",13/10/2026
+1105,renascerepi.com.br,https://www.renascerepi.com.br/vestimenta/eletricista/calca-risco-2-eletricista-cinza-somhar-ca-48513,descartado,"calça NR10 risco 2 de eletricista, não é calça de uniforme comum",13/10/2026
+1083,brasilprokarcher.com,https://brasilprokarcher.com/produto/lavadora-e-secadora-de-piso-karcher-bd-50-50-plus/,aceito,"lavadora e secadora de piso BD 50/50, a mesma aceita em outras lojas",13/10/2026
+1084,brasilprokarcher.com,https://brasilprokarcher.com/produto/lavadora-e-secadora-de-piso-karcher-bd-50-50-plus/,aceito,"lavadora e secadora de piso BD 50/50, a mesma aceita em outras lojas",13/10/2026
+1085,brasilprokarcher.com,https://brasilprokarcher.com/produto/lavadora-e-secadora-de-piso-karcher-bd-50-50-plus/,descartado,BD 50/50 não é a enceradeira pequena,13/10/2026
+1114,forteimperador.com.br,https://www.forteimperador.com.br/produto/mascara-descartavel-9902-3m/,aceito,máscara descartável 3M 9902,13/10/2026
+1114,megaepi.com.br,https://megaepi.com.br/produto/touca-de-protecao-descartavel-tnt/,descartado,"touca descartável, não é máscara",13/10/2026
+1005,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/odorizador-de-ambientes-baunilha-400ml-levuze,aceito,odorizador de ambiente aerossol 400 ml,13/10/2026
+1011,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/desinfetante-azulim-5l-wave,descartado,"desinfetante pronto uso (Azulim), não é concentrado de quaternário",13/10/2026
+1031,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/produto/lustra-moveis-500-ml-butterfly-audax.html,aceito,lustra-móveis 500 ml,13/10/2026
+1033,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/pano-de-prato-estampado-65x40,descartado,"pano de prato estampado, item pede branco",13/10/2026
+1047,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/saco-vermelho-cs-150l-c100,descartado,"saco de 150 L vermelho, item pede cor preta",13/10/2026
+1051,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/base-seladora-05-lt-piso-adhere-interno-quimistar,aceito,seladora de piso acrílica 5 L,13/10/2026
+1055,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/produto/soda-caustica-escamas-99-vorel-1kg-start-quimica.html,aceito,soda cáustica em escamas 99% 1 kg,13/10/2026
+1056,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/produto/conjunto-mop-rotatorio-balde-13l-c-cesto-plastico-e-1-refil-superpro.html,descartado,"conjunto mop rotativo, não é balde avulso",13/10/2026
+1065,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/lixeira-coletor-com-rodas-120-litros-cinza,aceito,coletor com rodas 120 L,13/10/2026
+1070,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/papel-higienico-rolao-8x10x300m-premium-2053-florax.html,descartado,"papel higiênico, não é o dispensador",13/10/2026
+1076,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/escova-sanitaria-com-suporte-dsr,aceito,escova sanitária com suporte,13/10/2026
+1091,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/placa-sinalisadora-piso-molhado,descartado,"placa de piso molhado, item pede banheiro interditado",13/10/2026
+1102,starsprodutosdelimpeza.com.br,https://www.starsprodutosdelimpeza.com.br/vassoura-pelo-sintetico-uso-interno-scabo-condor,descartado,"vassoura sem medida no título, item pede 60 cm",13/10/2026
+1030,supriflex.com.br,https://www.supriflex.com.br/gel-adesivo-sanitario-gota-limpa-c-7-doses-citronela,descartado,"gel adesivo sanitário é desodorizador, não limpador de louça sanitária",13/10/2026
+1046,supriflex.com.br,https://www.supriflex.com.br/saco-de-lixo-preto-100l-c100-resistenciareforcado,aceito,saco preto 100 L reforçado c/100,13/10/2026
+1067,supriflex.com.br,https://www.supriflex.com.br/produto/lixeira-basculante-plastica-sanremo-205l.html,aceito,"lixeira plástica 20,5 L",13/10/2026
+1070,supriflex.com.br,https://www.supriflex.com.br/papel-higienico-rolao-branco-luxo-suell-8x300m,descartado,"papel higiênico, não é o dispensador",13/10/2026
+1083,supriflex.com.br,https://www.supriflex.com.br/produto/lavadora-e-secadora-de-pisos-comac-innova-55b-usada.html,descartado,"lavadora USADA, preço de outra coisa",13/10/2026
+1084,supriflex.com.br,https://www.supriflex.com.br/produto/lavadora-e-secadora-de-pisos-comac-innova-55b-usada.html,descartado,"lavadora USADA, preço de outra coisa",13/10/2026
+1085,supriflex.com.br,https://www.supriflex.com.br/produto/lavadora-e-secadora-de-pisos-comac-innova-55b-usada.html,descartado,"lavadora USADA, preço de outra coisa",13/10/2026
+1091,supriflex.com.br,https://www.supriflex.com.br/produto/placa-sinalizadora-banheiro-feminino-15x20cm.html,descartado,"placa de banheiro feminino, item pede banheiro interditado dobrável",13/10/2026
+1101,supriflex.com.br,https://www.supriflex.com.br/produto/vassoura-gari-prefeitura-reta-40cm.html,descartado,"vassoura gari de rua, não é vassoura de pelo sintético",13/10/2026
+1008,ncbelladistribuidora.com.br,https://www.ncbelladistribuidora.com.br/concrete-surface-um-litro-impermeabilizante,descartado,"impermeabilizante de concreto, não é cera de piso",13/10/2026
+1040,ncbelladistribuidora.com.br,https://www.ncbelladistribuidora.com.br/mld-floral-cinco-litros,descartado,"limpador desinfetante, não é sabão líquido",13/10/2026
+1056,ncbelladistribuidora.com.br,https://www.ncbelladistribuidora.com.br/selador-termoplastico-5-litros-spartan,descartado,"selador termoplástico, não é balde",13/10/2026
+1083,ncbelladistribuidora.com.br,https://www.ncbelladistribuidora.com.br/enceradeira-piso-270-c1-escada-bivolt-certec,descartado,"enceradeira de escada 270 mm, não é a grande",13/10/2026
+1084,ncbelladistribuidora.com.br,https://www.ncbelladistribuidora.com.br/enceradeira-piso-270-c1-escada-bivolt-certec,descartado,"enceradeira de escada 270 mm, não é a média",13/10/2026
+1085,ncbelladistribuidora.com.br,https://www.ncbelladistribuidora.com.br/enceradeira-piso-270-c1-escada-bivolt-certec,aceito,enceradeira profissional pequena (270 mm),13/10/2026
+1091,ncbelladistribuidora.com.br,https://www.ncbelladistribuidora.com.br/placa-sinal-piso-molhado-certec,descartado,"placa de piso molhado, item pede banheiro interditado",13/10/2026
+1107,renascerepi.com.br,https://www.renascerepi.com.br/botas-e-calcados-de-protecao/tenis-de-seguranca/tenis-iate-ocupacional-antiderrapante-bracol-ca-43693,aceito,"calçado ocupacional antiderrapante com CA (sem biqueira atende, decisão de 14/10) -- Tênis Iate Ocupacional Antiderrapante Bracol CA 43693",14/10/2026
+1107,palaciodasferramentas.com.br,https://palaciodasferramentas.com.br/sapato-ocupacional-soft-grip-impermeavel-e-antiderrapante-branco-b15265-kadesh,aceito,"calçado ocupacional impermeável e antiderrapante (sem biqueira atende, decisão de 14/10) -- Sapato Ocupacional Soft Grip Kadesh",14/10/2026

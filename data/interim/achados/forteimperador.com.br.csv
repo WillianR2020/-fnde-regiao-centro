@@ -1,0 +1,8 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1046,forteimperador.com.br,https://www.forteimperador.com.br/produto/cadeado-de-bloqueio-de-plastico-63mm-tagout/,"Cadeado de Bloqueio de Plástico 6,3mm – Tagout",0.497,0.0,2026-10-13T17:28:14,revisar,item exige [100] peças e o título do produto não diz quantas vêm,8814
+1056,forteimperador.com.br,https://www.forteimperador.com.br/produto/trava-queda-retratil-6mt-com-carcaca-de-plastico/,Trava Queda Retrátil 6mt com Carcaça de Plástico,0.498,0.0,2026-10-13T17:22:28,revisar,,9659
+1060,forteimperador.com.br,https://www.forteimperador.com.br/produto/trava-queda-retratil-6mt-com-carcaca-de-plastico/,Trava Queda Retrátil 6mt com Carcaça de Plástico,0.492,0.0,2026-10-13T17:25:35,revisar,,9659
+1097,forteimperador.com.br,https://www.forteimperador.com.br/produto/cadeado-de-bloqueio-de-plastico-63mm-tagout/,"Cadeado de Bloqueio de Plástico 6,3mm – Tagout",0.493,0.0,2026-10-13T17:24:49,revisar,comprimento pedida [0.13] e o produto traz [0.0063],8814
+1105,forteimperador.com.br,https://www.forteimperador.com.br/produto/calca-de-raspa/,Calça de Raspa,0.5,0.0,2026-10-13T17:24:09,revisar,,8442
+1106,forteimperador.com.br,https://www.forteimperador.com.br/produto/meia-termica-de-algodao/,Meia Térmica de Algodão,0.6,0.0,2026-10-13T17:21:05,revisar,,9701
+1114,forteimperador.com.br,https://www.forteimperador.com.br/produto/mascara-descartavel-9902-3m/,Máscara Descartável 9902 3M,0.661,0.0,2026-10-13T17:22:20,aceito,,4731
