@@ -1,0 +1,12 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1021,pisebem.com.br,https://www.pisebem.com.br/fibra-de-limpeza-scotch-brite-servico-pesado-verde-escuro-102-x-260mm-hb004820765-157776,Fibra de limpeza Scotch-Brite Serviço Pesado Verde Escuro 102 X 260mm Hb004820765,0.72,4.0,2026-10-11T07:44:51,revisar,item exige [10] peças e o título do produto não diz quantas vêm,
+1041,pisebem.com.br,https://www.pisebem.com.br/sabonete-liquido-desengraxante-citric-power-1-litro-nutriex-156475,Sabonete líquido desengraxante Citric Power 1 litro Nutriex,0.72,33.16,2026-10-11T07:46:54,revisar,volume pedida [5.0] e o produto traz [1.0],
+1093,pisebem.com.br,https://www.pisebem.com.br/cone-balizador-laranja-e-branco-116-cm-com-base-de-borracha-com-sapata-ref-pl-4062-plastcor-158015,Cone balizador laranja e branco 116 cm com base de borracha com sapata ref. PL 4062 Plastcor,0.492,103.41,2026-10-11T07:41:53,revisar,comprimento pedida [0.4] e o produto traz [1.16],
+1105,pisebem.com.br,https://www.pisebem.com.br/calca-uniforme-brim-cinza-luvas-koch-157348,Calça Uniforme Brim Cinza Luvas Koch,0.72,109.1,2026-10-12T16:36:56,aceito,,
+1109,pisebem.com.br,https://www.pisebem.com.br/luva-de-pvc-azul-36-cm-ca-36581-156562,Luva De Pvc Azul 36 Cm Ca 36581,0.72,24.16,2026-10-09T15:29:58,aceito,,
+1111,pisebem.com.br,https://www.pisebem.com.br/luva-de-protecao-latex-neoprene-ca-46919-handex-157071,Luva de proteção látex neoprene Ca 46919 Handex,0.72,9.08,2026-10-09T15:30:04,aceito,,
+1113,pisebem.com.br,https://www.pisebem.com.br/oculos-de-protecao-jaguar-ca-10346-kalipso-incolor-156943,Óculos de proteção Jaguar Ca 10346 Kalipso incolor,0.72,4.99,2026-10-09T15:30:08,aceito,,
+1115,pisebem.com.br,https://www.pisebem.com.br/protetor-auricular-ref-1290-hb004458426-ca-9584-3m-156437,Protetor Auricular Ref. 1290 Hb004458426 Ca 9584 3M,0.72,2.86,2026-10-09T15:30:15,aceito,,
+1116,pisebem.com.br,https://www.pisebem.com.br/avental-de-pvc-branco-1-20-x-0-70-metro-plastcor-157239,"Avental de PVC branco 1,20 x 0,70 metro Plastcor",0.72,12.26,2026-10-09T15:30:19,aceito,,
+1117,pisebem.com.br,https://www.pisebem.com.br/capa-de-chuva-amarela-pop-ca-28191-maicol-158057,Capa de chuva amarela Pop Ca 28191 Maicol,0.72,26.2,2026-10-09T15:30:21,aceito,,
+1119,pisebem.com.br,https://www.pisebem.com.br/protetor-solar-sunday-uv-fps-60-2-litros-nutriex-158102,Protetor solar Sunday UV FPS 60 2 litros Nutriex,0.72,208.34,2026-10-09T15:30:29,aceito,,

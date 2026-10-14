@@ -31,6 +31,22 @@ log = obter(__name__)
 CHAVES_DE_BUSCA = ("q", "s", "ft", "busca", "search", "termo", "query",
                    "palavra", "keyword", "text", "pesquisa")
 
+# Link que leva de volta a uma busca não é produto. Loja Magento lista
+# "termos relacionados" dentro de <li>, perto de um preço, e cada um
+# entrava com o próprio termo de título ("agua sanitaria 5 l"): numa
+# distribuidora real foram 87 achados de 104, todos página de busca, e
+# a coleta leu um preço qualquer da listagem como se fosse do produto.
+URL_DE_BUSCA = re.compile(
+    r"/catalogsearch/|/(busca|search|pesquisa)(/|\?|$)|"
+    r"[?&](q|s|ft|busca|search|termo|query|pesquisa|palavra_busca)=",
+    re.IGNORECASE,
+)
+
+
+def eh_url_de_busca(url: str) -> bool:
+    """A URL é uma página de resultado de busca, não a de um produto."""
+    return bool(URL_DE_BUSCA.search(url or ""))
+
 
 def molde_de_busca(texto: str, dominio: str = "") -> str:
     """O que a pessoa escreveu -> molde com {termo}, pronto para a varredura.

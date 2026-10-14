@@ -47,6 +47,7 @@ import time
 from urllib.parse import quote_plus, urljoin
 
 from src.adapters.base import Executor
+from src.core.busca import eh_url_de_busca
 from src.core.http import INTERVALO_MAX, INTERVALO_MIN, FalhaDeRede, SiteBloqueado
 from src.core.log import obter
 from src.models import Plataforma, ProdutoBruto
@@ -63,7 +64,6 @@ MAX_PRODUTOS = 30
 # buscando nada -- devolve a vitrine. Uma loja Magento real respondeu as
 # mesmas 20 botinas para "panela" e para "tabua de corte".
 TERMO_IMPOSSIVEL = "zzqxwv"
-LARGURA, ALTURA = 1366, 900
 
 # Ordem de tentativa do campo de busca: nome exato antes de nome que só
 # contém, e atributo estável (type, name) antes de placeholder, que muda
@@ -76,6 +76,7 @@ SELETORES_BUSCA = (
     "input[name='busca']",
     "input[name='search']",
     "input[name='palavra']",
+    "input[name='palavra_busca']",  # Tray: /loja/busca.php?palavra_busca=
     "input[name*='busca' i]",
     "input[name*='pesquis' i]",
     "input[name*='search' i]",
@@ -171,6 +172,15 @@ TITULOS_INUTEIS = re.compile(
 
 PRECO = re.compile(r"R\$\s*([\d.\s]+,\d{2})")
 
+# Botão de favoritar, conta e carrinho moram dentro do card do produto e
+# viravam o link do achado: na Plásticos Ipiranga (Loja Integrada) os 57
+# achados apontavam para "/conta/favorito/<id>/adicionar", sem preço.
+URL_DE_CONTA = re.compile(
+    r"/(conta|minha-conta|my-account|account|login|entrar|cadastro|"
+    r"carrinho|cart|checkout)(/|\?|$)|favorit|wishlist|lista-de-desejos",
+    re.IGNORECASE,
+)
+
 # Os primeiros caracteres visíveis, que dizem se a página é resultado de
 # busca, 404 ou home. Script separado do de extração de propósito: é
 # outra pergunta, feita antes, e barata.
@@ -234,8 +244,12 @@ EXTRAIR = """() => {
   // card. Numa loja real isso trouxe "SOBRE NÓS" e "Talheres de Mesa"
   // como se fossem produtos -- ruído que o matching pontua a sério.
   const ehNavegacao = (a) =>
-    a.closest('nav,header,footer,[role="navigation"],[class*="menu" i],' +
-              '[class*="nav" i],[class*="breadcrumb" i],[class*="rodape" i]');
+    a.closest('nav,header,footer,[role="navigation"],[class*="breadcrumb" i],' +
+              '[class*="rodape" i]');
+  // Classe com "nav"/"menu" é indício mais fraco: a Gimba embrulha a
+  // vitrine de resultados inteira num "NavegaVitrine". Ali o link só é
+  // descartado se não tiver preço por perto -- link de menu não tem.
+  const ehMenuPorClasse = (a) => a.closest('[class*="menu" i],[class*="nav" i]');
 
   for (const a of document.querySelectorAll('a[href]')) {
     const href = a.href || '';
@@ -255,6 +269,7 @@ EXTRAIR = """() => {
       if (achado) preco = achado[0];
     }
     if (!ehProduto(href) && !preco) continue;
+    if (!preco && ehMenuPorClasse(a)) continue;
     juntar(titulo, href, preco, a.getAttribute('data-sku'));
   }
   return saida;
@@ -305,13 +320,9 @@ class PlaywrightExecutor(Executor):
     # --- ciclo de vida ------------------------------------------------------
 
     def abrir(self) -> None:
-        from src.export.captura import obter_navegador
+        from src.export.captura import novo_contexto
 
-        navegador = obter_navegador()
-        self._contexto = navegador.new_context(
-            viewport={"width": LARGURA, "height": ALTURA},
-            locale="pt-BR",
-        )
+        self._contexto = novo_contexto()
         self._pagina = self._contexto.new_page()
         log.info("%s: navegador aberto", self.fornecedor.dominio)
 
@@ -726,7 +737,7 @@ def produtos_da_pagina(brutos: list[dict], url_pagina: str) -> list[ProdutoBruto
             continue
 
         url = urljoin(url_pagina, url)
-        if url in vistos:
+        if url in vistos or eh_url_de_busca(url) or URL_DE_CONTA.search(url):
             continue
         vistos.add(url)
 

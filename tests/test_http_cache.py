@@ -103,3 +103,29 @@ def test_cache_desligado_ignora_o_que_esta_no_disco():
     semear(gravador, URL, "corpo")
 
     assert Cliente(usar_cache=False)._ler_cache(URL) is None
+
+
+def test_post_segue_redirecionamento_como_post():
+    """301 do endereço sem www: o POST tem que chegar ao destino como POST.
+
+    O httpx troca POST por GET no 301, e a simulação de frete chegava
+    sem corpo -- erro nas duas UFs numa loja VTEX real.
+    """
+    import httpx
+
+    pedidos = []
+
+    def responder(pedido: httpx.Request) -> httpx.Response:
+        pedidos.append((pedido.method, str(pedido.url), pedido.content))
+        if pedido.url.host == "loja.com.br":
+            return httpx.Response(301, headers={"location": "https://www.loja.com.br/api/sim"})
+        return httpx.Response(200, json={"ok": True})
+
+    cliente = Cliente(usar_cache=False)
+    cliente._http = httpx.Client(transport=httpx.MockTransport(responder),
+                                 follow_redirects=True)
+    cliente._esperar = lambda dominio: None
+
+    assert cliente.post_json("https://loja.com.br/api/sim", {"cep": "1"}) == {"ok": True}
+    assert [m for m, _, _ in pedidos] == ["POST", "POST"]
+    assert pedidos[1][2] == pedidos[0][2]

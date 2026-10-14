@@ -1,0 +1,4 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1027,loja.codossal.com.br,https://loja.codossal.com.br/produtos/limpa-vidros-codossal/,Limpa Vidros Codossal,0.662,5.0,2026-10-11T20:55:23,aceito,,
+1055,loja.codossal.com.br,https://loja.codossal.com.br/produtos/soda-caustica-codossal/,Soda Cáustica Codossal,0.72,14.0,2026-10-12T14:35:15,aceito,,
+1095,loja.codossal.com.br,https://loja.codossal.com.br/produtos/limpa-vidros-codossal/,Limpa Vidros Codossal,0.543,5.0,2026-10-11T20:59:01,revisar,,

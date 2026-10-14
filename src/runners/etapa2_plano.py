@@ -28,6 +28,7 @@ from pathlib import Path
 
 from src.core import tabelas
 from src.core.log import obter
+from src.core.revisao import aplicar_revisao
 
 log = obter(__name__)
 
@@ -71,7 +72,7 @@ def consolidar_achados() -> list[dict]:
                     melhores[chave] = linha
 
     log.info("%d arquivos de achados, %d registros unicos", len(arquivos), len(melhores))
-    return list(melhores.values())
+    return aplicar_revisao(list(melhores.values()))
 
 
 def gerar_plano() -> None:

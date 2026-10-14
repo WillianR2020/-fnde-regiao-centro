@@ -23,6 +23,14 @@ from src.models import Fornecedor, Item, ModoFrete, Plataforma, Status
 log = obter(__name__)
 
 ITENS = Path("data/interim/itens.csv")
+# Termos de busca conferidos à mão, somados aos gerados (id_item, termo,
+# motivo). A loja chama "botina" o que a lista chama "calçado de
+# segurança", e o termo gerado da descrição nunca acha.
+TERMOS_EXTRAS = Path("data/raw/termos_extras.csv")
+# Especificação trocada por decisão de quem pediu a pesquisa (13/10/2026:
+# o álcool 54% do 1001 pode ser o 46,2%). A descrição nova é o que o
+# matching lê; o nome do item na entrega só muda se item_curto vier.
+AJUSTES_ITENS = Path("data/raw/ajustes_itens.csv")
 FORNECEDORES = Path("data/interim/fornecedores_master.csv")
 
 COLUNAS_FORNECEDOR = [
@@ -72,9 +80,40 @@ def _entrega_do_texto(texto: str) -> dict[str, bool]:
 # Itens
 # ---------------------------------------------------------------------------
 
+def ler_termos_extras(caminho: Path = TERMOS_EXTRAS) -> dict[str, list[str]]:
+    if not caminho.exists():
+        return {}
+    extras: dict[str, list[str]] = {}
+    with caminho.open(encoding="utf-8-sig", newline="") as f:
+        for linha in csv.DictReader(f):
+            id_item = (linha.get("id_item") or "").strip()
+            termo = (linha.get("termo") or "").strip()
+            if id_item and termo:
+                extras.setdefault(id_item, []).append(termo)
+    return extras
+
+
+def ler_ajustes_itens(caminho: Path = AJUSTES_ITENS) -> dict[str, dict[str, str]]:
+    """{id_item: {"descricao": ..., "item_curto": ...}}; a última linha do item vale."""
+    if not caminho.exists():
+        return {}
+    ajustes: dict[str, dict[str, str]] = {}
+    with caminho.open(encoding="utf-8-sig", newline="") as f:
+        for linha in csv.DictReader(f):
+            id_item = (linha.get("id_item") or "").strip()
+            if id_item:
+                ajustes[id_item] = {
+                    campo: (linha.get(campo) or "").strip()
+                    for campo in ("descricao", "item_curto")
+                    if (linha.get(campo) or "").strip()
+                }
+    return ajustes
+
+
 def ler_itens(
     categorias: list[str] | None = None,
     caminho: Path = ITENS,
+    extras: Path | None = None,
 ) -> dict[str, Item]:
     """itens.csv -> {id_item: Item}, na ordem do arquivo.
 
@@ -87,6 +126,11 @@ def ler_itens(
 
     alvo = {c.strip().upper() for c in categorias} if categorias else None
     itens: dict[str, Item] = {}
+    # Os extras são da lista de verdade; outra lista (teste, varejo) só
+    # os recebe se pedir.
+    termos_extras = ler_termos_extras(extras or TERMOS_EXTRAS) if (
+        extras or Path(caminho) == ITENS) else {}
+    ajustes = ler_ajustes_itens() if Path(caminho) == ITENS else {}
 
     with caminho.open(encoding="utf-8", newline="") as f:
         for linha in csv.DictReader(f):
@@ -96,16 +140,17 @@ def ler_itens(
             categoria = (linha.get("categoria") or "").strip()
             if alvo and categoria.upper() not in alvo:
                 continue
+            ajuste = ajustes.get(id_item, {})
             itens[id_item] = Item(
                 id_item=id_item,
                 categoria=categoria,
                 grupo_insumo=(linha.get("grupo_insumo") or "").strip(),
-                descricao=(linha.get("descricao") or "").strip(),
+                descricao=ajuste.get("descricao") or (linha.get("descricao") or "").strip(),
                 termos_busca=[
                     t.strip() for t in (linha.get("termos_busca") or "").split("|")
                     if t.strip()
-                ],
-                item_curto=(linha.get("item_curto") or "").strip(),
+                ] + termos_extras.get(id_item, []),
+                item_curto=ajuste.get("item_curto") or (linha.get("item_curto") or "").strip(),
             )
 
     if alvo and not itens:

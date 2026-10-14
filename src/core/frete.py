@@ -12,13 +12,13 @@ Daí a separação em dois momentos:
 from __future__ import annotations
 
 from src.core.log import obter
-from src.models import CEPS_CENTRO, Fornecedor, ModoFrete
+from src.models import CEPS_CENTRO, UF_PESQUISA, Fornecedor, ModoFrete
 
 log = obter(__name__)
 
-# Um CEP fora da Região Centro (Av. Paulista). Sem ele não dá para
-# distinguir "frete grátis para o Brasil inteiro" de "frete grátis só na
-# região": nos dois casos os CEPs de GO e DF dão zero.
+# Um CEP fora de Goiás (Av. Paulista). Sem ele não dá para distinguir
+# "frete grátis para o Brasil inteiro" de "frete grátis só na região":
+# nos dois casos o CEP de GO dá zero.
 CEP_FORA_DO_CENTRO = "01310100"
 
 # Pistas de "grátis acima de X" no texto que o site devolve junto da
@@ -37,6 +37,34 @@ def _sem_acento(texto: str) -> str:
     from unidecode import unidecode
 
     return unidecode(str(texto or "")).lower()
+
+
+# Observação gravada quando o frete não é calculado de propósito. Não é
+# "sob consulta" nem recusa: é a regra, e o montador a reconhece.
+FRETE_DISPENSADO = "frete nao calculado: fornecedor com sede em GO"
+
+
+# Observação gravada quando a loja TEM calculadora de frete mas o robô
+# não leu o valor (seletor que não pegou, cotação que não apareceu). Não
+# é recusa nem "sob consulta": o frete existe e uma pessoa consegue
+# coletá-lo à mão. A linha é salva e vai para a entrega marcada.
+FRETE_A_COLETAR = "POSSIVEL COLETAR o frete"
+
+
+def frete_possivel_de_coletar(observacao: str) -> bool:
+    return FRETE_A_COLETAR.lower() in str(observacao or "").lower()
+
+
+def sede_na_uf_da_pesquisa(uf_sede: str | None) -> bool:
+    """A empresa fica em Goiás? Então o frete não é calculado.
+
+    Regra da SEAD-GO desde 09/10/2026: fornecedor com sede em GO entra
+    com o preço do produto, sem frete; fornecedor de fora de GO só entra
+    com entrega em GO confirmada, e com o frete somado ao preço. UF em
+    branco conta como "fora": sem saber onde a empresa fica, a entrega
+    tem que ser provada.
+    """
+    return (uf_sede or "").strip().upper() == UF_PESQUISA
 
 
 def houve_recusa(observacao: str) -> bool:

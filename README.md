@@ -1,6 +1,6 @@
 # fnde-regiao-centro
 
-Coleta de preços no **atacado** para a **Região Centro (GO e DF)**, a partir
+Coleta de preços no **atacado** para **Goiás (GO)**, a partir
 da lista de itens da **Pesquisa SEAD-GO de Limpeza Predial**.
 
 Esta é uma versão adaptada, com histórico próprio, do pipeline
@@ -22,9 +22,12 @@ itens e as entradas de fornecedores (ver
   - 4 são coletados à mão, todos da categoria AUXÍLIOS: 1 passagem de
     ônibus de Goiânia e 3 ASOs (exames de saúde ocupacional). Não existe
     loja online com carrinho para eles.
-- **UFs:** GO e DF.
-- **Por item e por UF:** 5 preços de 5 fornecedores distintos (mesma regra
-  da versão Sul), com print mostrando o frete.
+- **UF:** só GO. O DF saiu da pesquisa em 09/10/2026.
+- **Por item:** 5 preços de 5 fornecedores distintos que atendem GO.
+  - Sede em GO: sem cálculo de frete; PREÇO FINAL = preço do produto.
+  - Sede fora de GO: frete para GO cotado e mostrado **à parte** em VALOR
+    FRETE (PREÇO FINAL é só o produto, sem desconto de PIX, decisões de 13/10/2026); só entra
+    se a entrega em GO for confirmada (frete "sob consulta" não serve).
 - **Formato:** o template de 15 colunas em `data/raw/FNDE_output.xlsx`,
   mais a 16ª coluna `PRINT`. Há um exemplo preenchido (da rodada Sul) em
   `docs/modelo_entrega/EQUIPAMENTO_exemplo_sul.xlsx`.
@@ -34,7 +37,6 @@ itens e as entradas de fornecedores (ver
 | UF | CEP | Logradouro (ViaCEP) |
 |---|---|---|
 | GO | 74933-130 | Rua Monte Carmelo, Cardoso, Aparecida de Goiânia |
-| DF | 70830-020 | Quadra SGAN 601 Módulo J, Asa Norte, Brasília |
 
 Ficam em `src/models.py` (`CEPS_CENTRO`). As UFs da pesquisa saem desse
 dicionário: para incluir ou retirar uma UF, basta mexer nele.
@@ -78,9 +80,9 @@ não entram como lead: servem para a coleta manual e estão na aba
 # Etapa 0: limpa a lista de itens (já rodada; resultado versionado em data/interim/)
 python -m src.runners.etapa0_limpar_itens
 
-# Etapa 1: valida fornecedores (CNPJ, CNAE, entrega em GO/DF)
+# Etapa 1: valida fornecedores (CNPJ, CNAE, sede e entrega em GO)
 python -m src.runners.etapa1_validar               # gera data/interim/fornecedores_master.csv
-python -m src.runners.etapa1_validar --com-frete   # também testa os CEPs de GO e DF (lento)
+python -m src.runners.etapa1_validar --com-frete   # também testa o CEP de GO para quem é de fora (lento)
 python -m src.runners.etapa1_validar --so-busca    # só relê URL/seletor de busca, sem rede
 
 # Etapa 2: varredura, para saber quais sites têm quais itens
@@ -107,15 +109,16 @@ categoria inteira.**
 1. Só entra fornecedor com CNAE principal de atacado (divisão 46) e CNPJ
    ativo. A exceção de varejo (47.53-9 / 47.59-8) foi herdada da versão Sul
    e está descrita em `AGENTS.md`.
-2. A UF da sede não importa. Entra loja de qualquer estado, desde que
-   entregue em **GO ou DF**. Quem decide é `entrega_centro`, e só a recusa
-   da loja reprova; timeout deixa o fornecedor PENDENTE.
+2. Atender **GO** é o critério. Sede em GO entra sem frete; sede em outro
+   estado entra só com entrega em GO confirmada, e o frete vai somado ao
+   preço. Na etapa 1 só a recusa reprova; timeout deixa PENDENTE.
 3. Nenhum site é coletado sem estar aprovado em `fornecedores_master.csv`.
 4. O **site** é a unidade de execução: um processo por domínio, sempre.
 5. Coleta e montagem são programas separados.
 6. `id_item` é **texto**, nunca int (`1000`, `G008`, `318N`).
 7. No máximo 3 requisições simultâneas por domínio.
-8. Os 5 preços vêm de 5 **domínios distintos**, cada um com preço e print.
+8. Os 5 preços vêm de 5 **domínios distintos**, cada um com preço e print
+   (com o frete visível quando a sede é de fora de GO).
 9. A embalagem faz parte do item: um frasco de 1 L não atende um galão de
    5 L, e um saco avulso não atende um pacote com 100.
 
@@ -123,9 +126,10 @@ categoria inteira.**
 
 | Ponto | Sul (original) | Centro (esta versão) |
 |---|---|---|
-| UFs / CEPs | PR, SC, RS (`CEPS_SUL`) | GO, DF (`CEPS_CENTRO`), com os CEPs da tabela acima |
+| UFs / CEPs | PR, SC, RS (`CEPS_SUL`) | só GO desde 09/10/2026 (`UF_PESQUISA`, `CEPS_CENTRO`) |
 | Campo de entrega | `entrega_sul` | `entrega_centro` (modelo e coluna do master) |
-| Regra de reprovação | recusa em PR, SC e RS | recusa em GO e DF (`UFS_CENTRO`, derivada dos CEPs) |
+| Regra de reprovação | recusa em PR, SC e RS | recusa em GO, para sede fora de GO |
+| Frete | sempre cotado e mostrado à parte | sede em GO: não calculado; fora de GO: cotado e mostrado à parte |
 | CEP de controle (grátis nacional) | Av. Paulista, fora do Sul | o mesmo, que também está fora do Centro |
 | Lista de itens | Lista de Equipamentos FNDE (144) | Pesquisa SEAD-GO Limpeza Predial (124) |
 | Itens manuais | COMBUSTÍVEL, SAÚDE OCUPACIONAL | + AUXÍLIOS (passagem e ASO) |
@@ -145,8 +149,8 @@ antes. Isso foi conferido comparando a saída nova com o `itens.csv` do Sul.
 - **Exceção de varejo e canal `--varejista`:** a decisão de 23/09/2026 foi
   tomada para a categoria EQUIPAMENTO do FNDE Sul. Falta confirmar se vale
   para a SEAD-GO. Ainda não há `itens_varejo.csv` nesta versão.
-- **Prazo e regra dos 5 preços por UF:** foram mantidos os da versão Sul.
-  Falta confirmar com a coordenação.
+- **Prazo:** a definir. A regra dos 5 preços (só GO, frete pela sede)
+  foi definida em 09/10/2026.
 - `docs/GUIA.md` e `docs/ESTRUTURA.md` são da versão Sul e podem estar
   desatualizados (ver `docs/LEIA-ME.md`).
 

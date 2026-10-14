@@ -10,15 +10,23 @@ o que entra na planilha é um JPEG reduzido em data/output/miniaturas/.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from src.core.log import obter
 
 log = obter(__name__)
 
-LARGURA_MINIATURA = 600
+# Formato da entrega do grupo (EQUIPAMENTO.xlsx, rodada Sul): cada print
+# aparece num quadro de 376 x 400 px na coluna PRINT, numa linha de 300
+# pontos, e a miniatura é o TOPO da página (onde ficam título, preço e a
+# área de compra) recortado nessa proporção, salvo em 772 px de largura.
+# A página inteira continua no PNG original, aberto pelo hyperlink.
+QUADRO_PX = (376, 400)
+LARGURA_MINIATURA = 772
 QUALIDADE = 70
-ALTURA_LINHA = 110
+ALTURA_LINHA = QUADRO_PX[1]
+LARGURA_COLUNA_PRINT = 53.7
 
 # Excel mede altura de linha em pontos e largura de coluna em caracteres.
 # 1 ponto = 4/3 pixel; a largura de 1 caractere fica em ~7 px na fonte
@@ -54,24 +62,43 @@ def gerar_miniatura(origem: Path, destino: Path | None = None) -> Path:
     if not origem.exists():
         raise FileNotFoundError(f"print nao existe: {origem}")
 
-    if destino.exists() and destino.stat().st_mtime >= origem.stat().st_mtime:
+    if (destino.exists() and destino.stat().st_mtime >= origem.stat().st_mtime
+            and _no_formato(destino)):
         return destino
 
     destino.parent.mkdir(parents=True, exist_ok=True)
     with Image.open(origem) as imagem:
         imagem = imagem.convert("RGB")
+        largura, altura = imagem.size
+        proporcao = QUADRO_PX[0] / QUADRO_PX[1]
+        imagem = imagem.crop((0, 0, largura, min(altura, round(largura / proporcao))))
         imagem.thumbnail((LARGURA_MINIATURA, LARGURA_MINIATURA * 4), Image.LANCZOS)
         imagem.save(destino, "JPEG", quality=QUALIDADE, optimize=True)
 
     return destino
 
 
-def embutir(ws, linha: int, coluna: int, miniatura: Path, original: Path) -> None:
+def _no_formato(miniatura: Path) -> bool:
+    """A miniatura já existente foi feita no formato atual (largura e recorte)?"""
+    from PIL import Image
+
+    try:
+        with Image.open(miniatura) as imagem:
+            largura, altura = imagem.size
+    except OSError:
+        return False
+    return largura <= LARGURA_MINIATURA and altura <= round(largura * QUADRO_PX[1] / QUADRO_PX[0]) + 1
+
+
+def embutir(ws, linha: int, coluna: int, miniatura: Path, original: Path,
+            relativo_a: Path | None = None) -> None:
     """Ancora a miniatura na célula e aponta o hyperlink para o original.
 
-    A imagem é redimensionada para caber em ALTURA_LINHA: uma captura de
-    página inteira tem 3.000 px de altura e, sem isso, cobriria quarenta
-    linhas da planilha.
+    A imagem ocupa o QUADRO_PX inteiro: a miniatura já sai recortada na
+    proporção dele. A célula leva o caminho do PNG relativo à pasta da
+    planilha (`prints/{CATEGORIA}/...png`), como na entrega do grupo, e
+    o hyperlink aponta para o mesmo caminho: a pasta `prints/` viaja
+    junto com o .xlsx e o link continua funcionando em outra máquina.
     """
     from openpyxl.drawing.image import Image as ImagemXLSX
     from openpyxl.utils import get_column_letter
@@ -82,8 +109,9 @@ def embutir(ws, linha: int, coluna: int, miniatura: Path, original: Path) -> Non
 
     imagem = ImagemXLSX(str(miniatura))
     proporcao = (imagem.width / imagem.height) if imagem.height else 1.0
-    imagem.height = ALTURA_LINHA
-    imagem.width = max(1, int(ALTURA_LINHA * proporcao))
+    imagem.width, imagem.height = QUADRO_PX
+    if proporcao > QUADRO_PX[0] / QUADRO_PX[1]:   # página mais baixa que o quadro
+        imagem.height = max(1, int(QUADRO_PX[0] / proporcao))
 
     celula = f"{get_column_letter(coluna)}{linha}"
     imagem.anchor = celula
@@ -92,7 +120,7 @@ def embutir(ws, linha: int, coluna: int, miniatura: Path, original: Path) -> Non
     ws.row_dimensions[linha].height = ALTURA_LINHA * PONTOS_POR_PIXEL
     largura_atual = ws.column_dimensions[get_column_letter(coluna)].width or 0
     ws.column_dimensions[get_column_letter(coluna)].width = max(
-        largura_atual, imagem.width / PIXELS_POR_CARACTERE
+        largura_atual, LARGURA_COLUNA_PRINT
     )
 
     # O hyperlink fica na própria célula PRINT, não numa coluna a mais: o
@@ -100,7 +128,16 @@ def embutir(ws, linha: int, coluna: int, miniatura: Path, original: Path) -> Non
     # quiser o PNG de prova clica na célula.
     alvo = ws.cell(row=linha, column=coluna)
     try:
-        alvo.hyperlink = original.resolve().as_uri()
-        alvo.style = "Hyperlink"
+        if relativo_a is not None:
+            caminho = Path(os.path.relpath(original.resolve(), Path(relativo_a).resolve())).as_posix()
+        else:
+            caminho = original.resolve().as_uri()
     except (OSError, ValueError):
-        log.debug("nao consegui montar o hyperlink para %s", original)
+        try:
+            caminho = original.resolve().as_uri()
+        except (OSError, ValueError):
+            log.debug("nao consegui montar o hyperlink para %s", original)
+            return
+    alvo.value = caminho
+    alvo.hyperlink = caminho
+    alvo.style = "Hyperlink"

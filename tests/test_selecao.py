@@ -60,18 +60,40 @@ def test_print_que_nao_esta_no_disco_nao_serve(print_valido):
 
 def test_registro_com_frete_em_aberto_nao_serve(print_valido):
     c = candidato(print_valido, "a.com.br", valor_frete=None, obs_frete="")
-    assert problema(c) == "frete não resolvido"
+    assert "não confirmada" in problema(c)
 
 
-def test_frete_nulo_com_observacao_serve(print_valido):
-    """Frete sob consulta é um resultado legítimo, desde que registrado."""
-    c = candidato(print_valido, "a.com.br", valor_frete=None,
-                  obs_frete="sob consulta: só por telefone")
-    assert problema(c) == ""
+def test_frete_nulo_so_serve_para_sede_em_go(print_valido):
+    """Desde 09/10/2026: sede em GO dispensa frete; de fora, sob consulta não basta."""
+    de_fora = candidato(print_valido, "a.com.br", valor_frete=None,
+                        obs_frete="sob consulta: só por telefone")
+    assert "não confirmada" in problema(de_fora)
+    em_go = candidato(print_valido, "b.com.br", valor_frete=None,
+                      obs_frete="frete nao calculado", uf_sede="GO")
+    assert problema(em_go) == ""
 
 
 def test_score_baixo_nao_serve(print_valido):
     assert "score" in problema(candidato(print_valido, "a.com.br", score=0.2))
+
+
+def test_score_baixo_serve_quando_a_revisao_aprovou(print_valido):
+    """revisao_matching.csv: a decisão humana substitui a nota do matching."""
+    c = candidato(print_valido, "a.com.br", score=0.5, revisado=True)
+    assert problema(c) == ""
+
+
+def test_par_descartado_na_revisao_nao_serve(print_valido):
+    c = candidato(print_valido, "a.com.br", descartado_revisao=True)
+    assert problema(c) == "par descartado na revisão humana"
+
+
+def test_pagina_de_busca_nao_serve(print_valido):
+    """O preço lido numa listagem não é o do produto (caso Magento, 10/10/2026)."""
+    url = "https://www.a.com.br/catalogsearch/result/?q=luva+de"
+    assert "busca" in problema(candidato(print_valido, "a.com.br", url_produto=url))
+    produto = "https://www.a.com.br/luva-nitrilica-ca-12345"
+    assert problema(candidato(print_valido, "a.com.br", url_produto=produto)) == ""
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +121,15 @@ def test_o_caso_reproduzido_cinco_sem_preco_e_um_com_preco(print_valido):
     escolhidos, _ = escolher_cinco(candidatos)
 
     assert [c["dominio"] for c in escolhidos] == ["outraloja.com.br"]
+
+
+def test_mesmo_fornecedor_fica_o_registro_mais_recente(print_valido):
+    """Coleta refeita: o preço novo vale, mesmo mais caro que o antigo."""
+    velho = candidato(print_valido, "a.com.br", preco=10.0, coletado_em="2026-10-09T10:00:00")
+    novo = candidato(print_valido, "a.com.br", preco=12.0, coletado_em="2026-10-12T10:00:00")
+    escolhidos, reserva = escolher_cinco([velho, novo])
+    assert [c["preco_final"] for c in escolhidos] == [12.0]
+    assert reserva[0]["preco_final"] == 10.0
 
 
 def test_escolhe_cinco_dominios_distintos(print_valido):

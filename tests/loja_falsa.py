@@ -22,7 +22,10 @@ from src.models import CEPS_CENTRO
 
 # Frete diferente por CEP: é o caso TABELA_POR_CEP, o mais comum.
 # Chaveado pelos CEPs de referência do projeto, para não sair de sincronia.
-FRETES = {CEPS_CENTRO["GO"]: 2490, CEPS_CENTRO["DF"]: 3150}
+# O segundo CEP é o de fora de GO que a classificação de frete usa (Av.
+# Paulista): o DF saiu da pesquisa em 09/10/2026, mas a loja continua
+# cobrando diferente por CEP.
+FRETES = {CEPS_CENTRO["GO"]: 2490, "01310100": 3150}
 
 PAGINA = """<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">

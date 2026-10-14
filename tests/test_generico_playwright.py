@@ -457,6 +457,30 @@ def test_descarta_link_que_nao_e_produto():
     ]
 
 
+def test_link_para_outra_busca_nao_e_produto():
+    """Magento lista "termos relacionados" em <li>, perto de um preço."""
+    brutos = [
+        {"titulo": "agua sanitaria 5 l", "url": "/catalogsearch/result/?q=agua+sanitaria",
+         "preco": "R$ 21,89"},
+        {"titulo": "esponja aco limpeza", "url": "https://loja.com.br/busca?q=esponja"},
+        {"titulo": "Disco Removedor Preto 350mm", "url": "/disco-removedor-preto-350mm.html"},
+    ]
+    assert [p.titulo for p in produtos_da_pagina(brutos, "https://loja.com.br")] == [
+        "Disco Removedor Preto 350mm"
+    ]
+
+
+def test_link_de_favoritar_nao_e_produto():
+    """Loja Integrada: o botão de favoritar fica dentro do card, com o título ao lado."""
+    brutos = [
+        {"titulo": "Saco de Lixo 20 Litros", "url": "/conta/favorito/253015851/adicionar"},
+        {"titulo": "Saco de Lixo 20 Litros", "url": "/saco-de-lixo-20-litros"},
+    ]
+    assert [p.url for p in produtos_da_pagina(brutos, "https://loja.com.br")] == [
+        "https://loja.com.br/saco-de-lixo-20-litros"
+    ]
+
+
 def test_mesma_url_nao_entra_duas_vezes():
     brutos = [
         {"titulo": "Tabua de Corte 50 cm", "url": "https://loja.com.br/p/tabua"},

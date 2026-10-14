@@ -1,0 +1,4 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1018,marchio.com,https://www.marchio.com/esponja-aco-inox,"Esponja aco inox R$ 4,11 ou 10x de R$ 0,41 sem juros",0.72,4.11,2026-10-11T18:52:25,revisar,item exige [8] peças e o título do produto não diz quantas vêm,
+1080,marchio.com,https://www.marchio.com/lavadora-alta-pressao-hlx-110-vm-1400-w-220-v,"Lavadora alta pressao hlx 110 vm 1400 w 220 v R$ 481,83 ou 10x de R$ 48,18 sem juros",0.72,481.83,2026-10-11T18:57:33,aceito,,
+1109,marchio.com,https://www.marchio.com/luva-pvc-46-verde-eg,"LUVA PVC 46 VERDE-EG R$ 28,64 ou 10x de R$ 2,86 sem juros",0.72,28.64,2026-10-11T18:59:20,aceito,,

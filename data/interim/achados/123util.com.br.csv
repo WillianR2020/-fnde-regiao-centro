@@ -1,0 +1,5 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1027,123util.com.br,https://123util.com.br/produtos/limpeza-e-organizacao/mop-multiuso-limpa-vidros-extensivel-123clean/0000371,Mop multiuso - limpa vidros - extensível 123clean Código: UD605 Ver produto,0.546,,2026-10-09T16:21:28,revisar,,
+1058,123util.com.br,https://123util.com.br/produtos/limpeza-e-organizacao/balde-retratil-dobravel-plastico-10l-123clean/0000524,PROMOÇÃO Balde retrátil dobrável plástico 10l 123clean Código: UD788 Ver produto,1.0,,2026-10-09T16:11:18,aceito,,
+1059,123util.com.br,https://123util.com.br/produtos/limpeza-e-organizacao/balde-retratil-dobravel-plastico-10l-123clean/0000524,PROMOÇÃO Balde retrátil dobrável plástico 10l 123clean Código: UD788 Ver produto,0.8,,2026-10-09T16:11:30,revisar,volume pedida [12.0] e o produto traz [10.0],
+1060,123util.com.br,https://123util.com.br/produtos/limpeza-e-organizacao/balde-retratil-dobravel-plastico-10l-123clean/0000524,PROMOÇÃO Balde retrátil dobrável plástico 10l 123clean Código: UD788 Ver produto,0.8,,2026-10-09T16:11:42,revisar,volume pedida [20.0] e o produto traz [10.0],

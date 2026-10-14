@@ -7,7 +7,7 @@ edite aqui, nunca lá. O guia para humanos é o `README.md`. `docs/GUIA.md` e
 `docs/ESTRUTURA.md` vêm da versão Sul e podem estar desatualizados: em caso
 de divergência, vale este arquivo e o código.
 
-Este repositório é a adaptação para a **Região Centro (GO e DF)** do
+Este repositório é a adaptação para **Goiás** (a pesquisa nasceu como Região Centro, GO e DF; o DF saiu em 09/10/2026) do
 `cosmic-axolotl/sul-scrapers` (Região Sul), com histórico próprio. As seções
 abaixo foram herdadas e ajustadas; números e nomes de loja citados como
 exemplo histórico ("89 sites", "132 itens") são da rodada Sul.
@@ -16,31 +16,91 @@ exemplo histórico ("89 sites", "132 itens") são da rodada Sul.
 
 Planilha de preços dos 124 itens da **Pesquisa SEAD-GO de Limpeza Predial**
 (`data/raw/Pesquisa_SEAD_GO_Limpeza_Predial.xlsx`, aba "Solicitação itens"),
-coletados no **atacado**, com **5 preços por item e por UF** (**GO e DF**), de
+coletados no **atacado**, com **5 preços por item para Goiás (GO)**, de
 **5 fornecedores distintos** por item. 120 itens na coleta automática (até
-1.200 linhas) e 4 na manual. Prazo: **a definir**.
+600 linhas) e 4 na manual. Prazo: **a definir**.
 
-As UFs e os CEPs de frete moram num lugar só, `CEPS_CENTRO` em
-`src/models.py`: GO 74933-130 (Aparecida de Goiânia) e DF 70830-020
-(Brasília), definidos pela equipe. `UFS_CENTRO` (etapa 1) deriva dele.
+**Regra de 09/10/2026:** o Distrito Federal saiu da pesquisa. Só GO conta,
+e a sede do fornecedor decide o frete:
+
+| Sede do fornecedor | Frete | PREÇO FINAL | Entra quando |
+|---|---|---|---|
+| em GO | não é calculado (`FRETE_DISPENSADO`) | preço do produto | sempre (passou no CNAE) |
+| fora de GO | cotado para o CEP de GO, em VALOR FRETE | preço do produto (o frete fica à parte) | a entrega em GO foi **confirmada** por cotação |
+
+**PREÇO FINAL é só o preço do produto** (com a promoção da loja, sem desconto de PIX), nunca somado ao
+frete (decisão de 13/10/2026). O frete para GO vai em VALOR FRETE; o total
+produto + frete (`montar_entrega.preco_total`) só desempata a escolha
+dos 5.
+
+Fornecedor de fora de GO com frete "sob consulta", sem cotação ou com
+recusa **não entra**: não há como confirmar que ele entrega no estado.
+
+**Preço aberto é obrigatório.** Site que só mostra preço com login ou
+cadastro é ignorado, mesmo passando no CNAE (decisão de 09/10/2026). Na
+coleta, `pagina_produto.preco_exige_cadastro` recusa a página ("Faça seu
+login ou cadastre-se para ver preços"); no master, a decisão fica em
+`data/raw/correcoes.csv` (dominio, status, motivo, decidido_em), que a
+etapa 1 aplica em toda rodada (`aplicar_correcoes`) para a revalidação
+não desfazê-la. Goiás Atacado e Atacadão da Limpeza BSB estão lá.
+
+Exceção: **frete possível de coletar**. Se a página tem calculadora de
+frete (o CEP entrou) mas o robô não leu o valor, ou a simulação VTEX
+falhou, a observação leva `FRETE_A_COLETAR` e o registro é salvo. Na
+entrega a linha sai em amarelo, com VALOR FRETE em branco para alguém
+preencher; PREÇO FINAL é só o produto, como em toda linha. Ela só
+ocupa vaga que as linhas completas deixaram, e conta em
+`pendencias.csv` (coluna `frete_a_coletar`). A retomada da coleta pula a
+linha amarela, que é completa para a entrega; depois de corrigir a
+leitura de frete de uma loja, `REFAZER_FRETE_A_COLETAR=1` faz a etapa 3
+tentar de novo só esses pares. O registro antigo fica no arquivo, e o
+montador prefere o novo quando o frete vem. `REFAZER_SEM_FRETE=1` faz o
+mesmo com o registro de fora de GO que ficou sem valor de frete
+("sob consulta"), para quando a loja ganha um caminho de cotação, e
+`REFAZER_TUDO=1` refaz todos os pares dos sites da rodada (depois de
+corrigir a leitura de preço de uma loja). Com dois registros do mesmo
+fornecedor para o item, o montador fica com o completo, o de maior
+score e, entre iguais, o mais recente -- não o mais barato.
+
+**Frete no carrinho.** Loja cuja ficha não tem calculadora, mas cujo
+carrinho de visitante cota o CEP, entra em `captura.FRETE_NO_CARRINHO`
+(domínio -> botão de adicionar, caminho do carrinho). Só para essas, a
+cotação e o print põem o produto no carrinho (sem conta, sem cadastro),
+preenchem o CEP lá e fotografam o carrinho, que mostra produto, preço e
+frete juntos. Lista conferida à mão: em qualquer outra loja, clicar em
+comprar continua proibido. Hoje: Shopping da Segurança (Magento/Hyvä,
+~20 s até a transportadora aparecer).
+
+A entrega sai em 3 planilhas, uma por grupo de insumo (a categoria bate
+um a um): MATERIAIS DE CONSUMO = LIMPEZA E HIGIENE (56), FERRAMENTAS E
+EQUIPAMENTOS = LIMPEZA PREDIAL (48), EPIS E UNIFORMES = EPI / UNIFORME
+(16). PASSAGEM e SAÚDE OCUPACIONAL ficam fora: não há preço de vitrine. A
+sede é a UF do CNPJ na Receita (`validar()` grava em `Fornecedor.uf`);
+UF em branco conta como fora de GO.
+
+A UF e o CEP de frete moram num lugar só, `src/models.py`: `UF_PESQUISA`
+("GO") e `CEPS_CENTRO` (GO 74933-130, Aparecida de Goiânia). O nome
+`CEPS_CENTRO` ficou para não quebrar quem importa. `UFS_CENTRO` (etapa 1)
+deriva dele. Coletas antigas de DF em `data/coletas/` são ignoradas pelo
+montador.
 
 Fornecedores entram por `data/raw/leads/`: primeiro as sugestões da própria
 pesquisa (`sugestoes_sead_go.csv`), depois a `lista_sites.xlsx` herdada da
 prospecção anterior.
 
-Template de saída: `data/raw/FNDE_output.xlsx` (15 colunas) + uma 16ª coluna `PRINT`.
+Template de saída: `data/raw/FNDE_output.xlsx` (15 colunas) + uma 16ª coluna `PRINT`, exatamente como o modelo `EQUIPAMENTO.xlsx` da rodada Sul (confirmado em 13/10/2026).
 
 ## Regras invioláveis
 
 1. **Só entra fornecedor com CNAE principal na divisão 46** (atacado). Divisão 47 com 46 secundário entra com `flag_atacarejo = SIM`. Situação cadastral diferente de ATIVA reprova.
    **Exceção decidida pelo grupo do Sul em 23/09/2026 (herdada; confirmar se vale para a SEAD-GO):** as classes **47.53-9** (eletrodomésticos e equipamentos de áudio e vídeo) e **47.59-8** (artigos de uso doméstico n.e.) entram mesmo **sem** CNAE 46 secundário, também com `flag_atacarejo = SIM`. O motivo é a categoria EQUIPAMENTO — fogão industrial, freezer e balança são vendidos por loja registrada nessas classes, e reprová-las deixava a categoria sem fornecedor para os 5 preços por item. A lista está em `CLASSES_VAREJO_ACEITAS`, comparada por classe (5 dígitos), então pega 4759-8/01 e 4759-8/99 de uma vez.
    **Quem só entrou pela exceção só é varrido no canal `--varejista`** (ver "Dois canais" abaixo): uma loja de eletrodoméstico não é fonte de EPI nem de uniforme.
-2. **A UF da sede não é critério; entregar na Região Centro é.** Fornecedor de qualquer estado entra, desde que entregue em GO ou DF e passe no CNAE/CNPJ. Quem decide é `entrega_centro`, e reprovação exige **recusa** da loja em todas as UFs da pesquisa — timeout ou site fora do ar deixa PENDENTE, não reprova.
+2. **Atender Goiás é critério; a sede decide como se prova.** Sede em GO atende GO e dispensa o frete. Sede em outro estado entra só com entrega em GO confirmada por cotação, e o frete vai à parte, em VALOR FRETE. Na etapa 1, reprovação exige **recusa** da loja — timeout ou site fora do ar deixa PENDENTE; na montagem, linha de fora de GO sem frete cotado não entra.
 3. **Nenhum site é coletado sem estar em `data/interim/fornecedores_master.csv` com status APROVADO.**
 4. **O site é a unidade de execução**, não o item nem a categoria. Um processo por domínio, sempre.
 5. **Coleta e montagem são programas separados.** O coletor não conhece o template do FNDE; o montador não abre navegador.
 6. **Marca e fabricante não entram no pipeline.** O critério é aderência à descrição, medida por score.
-7. **Print é requisito**, tirado depois de preencher o CEP, com o frete visível na mesma imagem.
+7. **Print é requisito.** Fornecedor de fora de GO: tirado depois de preencher o CEP de GO, com o frete visível na mesma imagem. Sede em GO: print da página do produto, sem CEP.
 
 ## Contrato de dados
 
@@ -62,7 +122,7 @@ class Fornecedor:
     situacao_cadastral: str | None
     eh_atacadista: bool | None
     flag_atacarejo: bool
-    entrega_centro: dict[str, bool]  # {"GO": True, "DF": False}; UF ausente = não deu para saber
+    entrega_centro: dict[str, bool]  # {"GO": True}; UF ausente = não deu para saber
     plataforma: Plataforma    # vtex|woocommerce|nuvemshop|shopify|tray|magento|desconhecida
     modo_frete: ModoFrete | None
     status: Status            # APROVADO | REPROVADO | PENDENTE
@@ -284,9 +344,94 @@ outro lugar.
 
 A extração roda como JavaScript na página, porque só lá o DOM está
 montado, e ignora `nav`, `header`, `footer` e link de categoria — numa
-loja real "SOBRE NÓS" e "Talheres de Mesa" entraram como produto. A
+loja real "SOBRE NÓS" e "Talheres de Mesa" entraram como produto. Bloco
+que só tem "nav" ou "menu" no **nome da classe** descarta o link apenas
+quando não há preço perto dele: a Gimba embrulha a vitrine de resultados
+num `NavegaVitrine`, e a regra antiga jogava fora todos os produtos. A
 conversão para `ProdutoBruto` é função pura e é o que os testes
 exercitam; nenhum teste sobe navegador.
+
+A busca do WordPress compara acento, e os termos chegam sem acento: na
+Mundo Azul "lavadora pressao" dava zero. Quando a Store API devolve zero
+para um termo de várias palavras, o `WooExecutor` tenta de novo só com a
+palavra mais longa (`palavra_de_recuo`), e o matching filtra o resto.
+
+Na coleta, todo executor sem API de ficha e de frete (hoje, todos menos
+o VTEX) lê preço, estoque e frete **na página do produto**, pelo
+navegador (`src/core/pagina_produto.py`): JSON-LD primeiro, depois
+metatags, depois o texto da área de compra; o frete é a opção mais
+barata que aparece depois de preencher o CEP. Produto fora de estoque
+não entra na coleta. Produto com grade de variação (Loja Integrada: cor,
+espessura, quantidade) não calcula frete antes da escolha;
+`captura.escolher_variacoes` clica a primeira opção disponível de cada
+grade ao abrir a página, e preço, frete e print são os dessa variação.
+Na Tray a grade é `ul.lista_cor_variacao > li[data-variant-value]`
+(esgotado tem `sem_estoque`), e a calculadora responde "selecione as
+variações antes de calcular o frete" sem a escolha (Renascer EPI). Cotação e print esperam o frete pela mesma rotina
+(`captura.preencher_e_esperar_frete`), então a imagem mostra o valor da
+planilha. CEP em dois campos (5 + 3 dígitos, Tray antiga) é preenchido
+nos dois; o botão de calcular também é reconhecido pela classe (`frete`,
+`simular`, `calcul`, como o `a.botao-simular-frete`), e botão de compra
+nunca é clicado como reserva -- antes, ele punha o produto no carrinho.
+Valor de frete em linha própria ("Envio:" / "Transportadora" / "Valor:" /
+"R$ 77,36", Gimba) herda o rótulo das linhas de cima que não têm preço.
+O campo de CEP espera 0,8 s entre a última tecla e o clique: campo com
+debounce (Hyvä) calculava com o CEP vazio.
+O CEP digitado é conferido no campo e redigitado mais devagar se a
+máscara engoliu teclas (Cauê ficava "7493_-___"); campo que só aparece
+depois do carregamento (simulador VTEX IO da LF) é procurado de novo
+após a rede parar. No print, se o frete não apareceu na tela, a captura
+tenta mais uma vez: a cotação da planilha pode ter vindo de outra
+abertura da página ou da API, e o print tem que mostrar o frete.
+"Entrega para credenciado R$ 0,00" (HD) conta como retirada: não é
+entrega em GO. Valor que vem **antes** do rótulo ("R$ 36,64" / "7 dias
+úteis" / "Correios PAC", Loja Integrada da Stars) pega o rótulo das
+duas linhas de baixo, só quando não há nada acima dele.
+"Produto indisponível no momento" / "Avise-me quando chegar" na tela
+ganha do JSON-LD "InStock": a Kalunga deixa o produto esgotado com
+preço de R$ 1,00 no JSON-LD.
+
+Preço lido do texto (sem JSON-LD nem metatag) segue três regras, porque
+loja sem `<del>` escreve "De R$ 23,41 … economize R$ 1,99 … Por R$
+17,91" e o primeiro valor era o riscado (Dutra, PreveOeste): "Por R$"
+ganha de tudo; sem ele, "De R$" e "economize R$" são ignorados; e o
+"De R$" vira o preço riscado. Valor só casa com milhar em grupos de 3:
+"R$ 17.9117,91" (dois spans colados) não é número.
+
+**O preço é o normal, nunca o de forma de pagamento** (13/10/2026).
+Desconto de PIX, boleto ou "à vista" não entra: quando o valor lido vem
+seguido de "à vista", "no PIX", "boleto" ou "desconto" e a ficha mostra
+um preço maior com cara de cartão (até 25% acima, ou a parcela sem juros
+vezes o número), vale o do cartão
+(`pagina_produto.preco_sem_desconto_de_pagamento`, para qualquer origem
+do preço: há JSON-LD que traz o à vista). Dutra "Por R$ 177,56 DESCONTO
+DE 5% no PIX (já aplicado) / R$ 186,90 em 3x" -> 186,90. A parcela
+vezes o número só vale quando a ficha não escreve o preço do cartão:
+"R$ 163,00 / 6x de R$ 27,16" é 163,00, não 162,96 (NC Bella); e
+"6x de R$ 27,16" não é preço riscado. A área de compra que essas regras
+leem sai do h1 quando o seletor achado não tem preço (o `.summary` da
+Casa dos Parafusos era o widget de avaliações). A Gimba fica
+como está: "R$ 19,99 no PIX (3% desconto)" é o único preço da ficha e é
+o mesmo do card da busca. Promoção da loja ("de R$ X por R$ Y")
+segue o modelo EQUIPAMENTO.xlsx (confirmado em 13/10/2026): Preço
+PRODUTO = X, VALOR DESCONTO = X - Y, OBS Desconto "preco de X por Y",
+PREÇO FINAL = Y. JSON-LD com o preço cheio e a tela com "de X por Y"
+(Gimba) dá Y, com X de riscado. Com variação escolhida na tela
+(`escolher_variacoes`), vale o preço da tela, não o JSON-LD do produto
+pai -- o print mostra a variação.
+
+**O print não pode ter nada na frente.** `captura.limpar_tela` roda logo
+antes da foto: aceita o banner de cookies, fecha balão de "Mais tarde",
+volta ao topo e esconde todo elemento fixo por cima da página (cookies,
+janela de cupom, chat, WhatsApp, fundo escuro de modal, cabeçalho fixo
+que a rolagem deixava no meio da imagem). Ficam a barra do topo e o
+que mostra o frete. Esc não é usado: fecharia a janela de frete.
+`OCR` de conferência: o Windows lê os prints sem instalar nada
+(`Windows.Media.Ocr`), útil para checar se o preço da planilha aparece
+na imagem.
+Todo contexto do navegador sai de `captura.novo_contexto()`,
+com user-agent de Chrome comum: duas distribuidoras reais barravam o
+"HeadlessChrome" com 403.
 
 Loja que a heurística não pega **não é bug do genérico**: sobrescreva
 `SEL_BUSCA` ou `URL_BUSCA` numa subclasse. É para isso que os dois
@@ -409,10 +554,48 @@ porque o fuzzy textual cobria a diferença. A escala de efeitos hoje:
 | dimensão divergente | no máximo `revisar` |
 | dimensão ausente no título | só perde o bônus |
 
+Teor (`%`, `°`, `GL`, `INPM`) é uma família de dimensão como volume e
+massa, e **toda** família citada pelos dois lados tem que conferir: antes
+bastava uma, e "álcool 70% 5 L" passava por "álcool 54% 5 L" (SEAD-GO
+1001 e 1002) porque o volume batia.
+
 Embalagem divergente descarta porque não há leitura em que um pacote de 50
 atenda quem pediu 100. Dimensão divergente não descarta porque a lista usa
 "mínimo", "máximo" e "aproximadamente" o tempo todo — o item 318N pede
 comprimento mínimo de 1,00 m, e um avental de 1,20 m atende.
+
+**Revisão humana volta para o pipeline** por `data/raw/revisao_matching.csv`
+(id_item, dominio, url_produto, decisao, motivo, decidido_em), lido por
+`src/core/revisao.aplicar_revisao` no plano (`etapa2_plano`) e na coleta
+(`etapa3_coletar`). `decisao` = `aceito` manda o par para a coleta;
+`descartado` tira o par do plano e, se ele já foi coletado, da entrega
+(o montador manda para a reserva). Para o mesmo par, vale a última
+linha do arquivo. A chave inclui a URL: se a varredura
+achar outro produto para o item, a decisão antiga não vale. O arquivo de
+achados nunca é editado.
+
+A varredura guarda **um** produto por item e site, o de maior score, e o
+produto certo às vezes fica preso no item vizinho ("fibra branca pct c/
+10" achada na busca da fibra verde). `aceito` para um item cujo par não
+existe, com uma URL que a varredura achou **no mesmo site**, vira achado
+desse item; URL que a varredura nunca viu não entra.
+
+Termo de busca que a descrição não gera ("botina" para "calçado de
+segurança", "piaçava" para "cerdas duras") vai em
+`data/raw/termos_extras.csv` (id_item, termo, motivo, decidido_em).
+`tabelas.ler_itens` soma esses termos depois dos gerados, só para a
+lista principal (`itens.csv`). Termo novo só adianta se o matching
+reconhecer o produto: a palavra do nome do item que a loja escreve de
+outro jeito vai em `matching.SINONIMOS_DO_NOME` ("botina" vale por
+"calçado", "piaçava" por "cerdas duras"). Sem isso, "Botina de Segurança
+Antiderrapante" ficava em 49 e nem chegava à revisão. Número de degraus é medida (família `degraus`), e
+"1.600 W" é mil e seiscentos (ponto de milhar), não 1,6.
+
+Especificação trocada por quem pediu a pesquisa vai em
+`data/raw/ajustes_itens.csv` (id_item, descricao, item_curto, motivo,
+decidido_em): a descrição nova é o que o matching lê, e o nome do item
+na entrega só muda se `item_curto` vier preenchido. 13/10/2026: o álcool
+54% do 1001 pode ser 46,2% (46° INPM confere com 46,2 pela folga de 2%).
 
 `matching.avaliar()` devolve score **e** decisão; `pontuar()` devolve só o
 número. Use `avaliar()`: reprovar é decisão, não é um número.
@@ -449,7 +632,35 @@ linha contra o `itens.csv` do Sul):
 data/output/prints/{CATEGORIA}/{id_item}__{dominio}__{uf}.png
 ```
 
-O montador deriva o caminho das próprias colunas da linha. Miniatura JPEG ~600px q70 em `data/output/miniaturas/` para embutir; PNG original fica intocado como prova.
+O montador deriva o caminho das próprias colunas da linha. PNG original fica intocado como prova.
+
+**Formato da entrega (decidido em 11/10/2026, modelo `EQUIPAMENTO.xlsx` da
+rodada Sul):** uma linha por preço, ordenada por item; linha de 300 pontos;
+coluna PRINT com 53,7 de largura, a miniatura num quadro de 376 x 400 px e,
+na célula, o caminho relativo do PNG com hyperlink. A miniatura é o **topo**
+da página (título, preço, CEP e frete), recortado na proporção do quadro e
+salvo em JPEG de 772 px em `data/output/miniaturas/` (`src/export/prints.py`).
+Texto das células quebrado e alinhado no topo.
+
+**Pasta de entrega:**
+
+```bash
+python -m src.export.montar_entrega --resultados data/output/RESULTADOS
+```
+
+```
+RESULTADOS/EXCEL/{CATEGORIA}.xlsx
+RESULTADOS/PRINTS/{CATEGORIA}/{id FGV}__{dominio}__GO.png   (só os que entraram)
+```
+
+O nome do print começa pelo ID FGV, então os 5 de cada item ficam juntos na
+pasta. A cada montagem, a cópia de quem saiu da planilha é apagada de
+PRINTS/ (o original em `data/output/prints/` fica), para a pasta ter
+só os prints das linhas entregues. O link da coluna PRINT é `../PRINTS/...`: a pasta RESULTADOS pode ser
+copiada inteira. Link que leva a uma página de busca nunca é produto
+(`busca.eh_url_de_busca`): o extrator descarta e o montador recusa. O
+extrator também descarta link de conta, favoritos e carrinho
+(`URL_DE_CONTA` em `generico_playwright.py`).
 
 ## Fora do escopo automatizado
 

@@ -21,7 +21,8 @@ from src.core.plataforma import detectar
 from src.core.busca import molde_de_busca, seletor_de_busca
 from src.core.tabelas import gravar_fornecedores, ler_fornecedores
 from src.export import validacao_por_aba
-from src.models import CEPS_CENTRO, Fornecedor, Plataforma, Status
+from src.core.frete import sede_na_uf_da_pesquisa
+from src.models import CEPS_CENTRO, UF_PESQUISA, Fornecedor, Plataforma, Status
 from src.validacao.classificar_cnae import decidir
 from src.validacao.consultar_cnpj import consultar, normalizar
 from src.validacao.extrair_cnpj import extrair_do_site
@@ -32,6 +33,8 @@ SAIDA = Path("data/interim/fornecedores_master.csv")
 # Empresa pesquisada, com CNPJ, que não tem site conhecido. Não entra no
 # master (a chave primária é o domínio), mas não pode se perder.
 SEM_SITE = Path("data/interim/sem_site.csv")
+# Decisões humanas por domínio (ver aplicar_correcoes).
+CORRECOES = Path("data/raw/correcoes.csv")
 
 # As duas bases consolidadas no layout herdado da versão Sul. São
 # OPCIONAIS: a Região Centro começou sem elas, e a entrada normal é a
@@ -616,6 +619,11 @@ def validar(fornecedor: Fornecedor, cliente: Cliente,
     fornecedor.situacao_cadastral = campos["situacao_cadastral"]
     if campos.get("razao_social") and not fornecedor.nome:
         fornecedor.nome = campos["razao_social"]
+    # A sede é a do CNPJ na Receita, não a da planilha: desde que sede em
+    # GO dispensa o frete, uma UF digitada errada no lead mudaria o preço
+    # final. Planilha só vale quando a Receita não respondeu.
+    if campos.get("uf"):
+        fornecedor.uf = str(campos["uf"]).strip().upper()
 
     status, atacarejo, motivo = decidir(
         fornecedor.cnae_principal,
@@ -647,17 +655,57 @@ def validar(fornecedor: Fornecedor, cliente: Cliente,
     return fornecedor
 
 
-def decidir_entrega(fornecedor: Fornecedor) -> Fornecedor:
-    """Entrega na Região Centro (GO e DF) é critério de aprovação, não anotação.
+def aplicar_correcoes(fornecedores, caminho: Path | None = None) -> int:
+    """Decisões humanas por domínio, que ganham da validação automática.
 
-    É o filtro que de fato importa. Fornecedor de qualquer estado entra,
-    e o que separa um atacadista útil de um inútil é exatamente se ele
-    coloca a caixa em Goiânia ou em Brasília.
-
-    Reprova só com prova: é preciso ter havido recusa em todas as UFs.
-    Timeout, bloqueio e site fora do ar deixam a pergunta em aberto, e
-    fornecedor não some da lista por causa de uma tarde ruim de rede.
+    `data/raw/correcoes.csv`: dominio, status, motivo, decidido_em. É o
+    lugar que o AGENTS.md reserva para correção ("nunca editar planilha
+    na mão"), e é lido em toda rodada -- sem isto, a revalidação
+    recalcula o status e desfaz a decisão. Primeiro caso: site que só
+    mostra preço com login/cadastro, ignorado por regra da pesquisa
+    (09/10/2026), mesmo passando no CNAE.
     """
+    import csv
+
+    caminho = caminho or CORRECOES
+    if not caminho.exists():
+        return 0
+    por_dominio = {f.dominio: f for f in fornecedores}
+    aplicadas = 0
+    with caminho.open(encoding="utf-8", newline="") as arquivo:
+        for linha in csv.DictReader(arquivo):
+            dominio = normalizar_dominio(linha.get("dominio") or "")
+            forn = por_dominio.get(dominio)
+            if forn is None:
+                log.warning("correcoes.csv: %s nao esta no master", dominio)
+                continue
+            status = (linha.get("status") or "").strip().upper()
+            if status not in Status.__members__:
+                log.warning("correcoes.csv: status %r invalido para %s", status, dominio)
+                continue
+            forn.status = Status[status]
+            data = (linha.get("decidido_em") or "").strip()
+            forn.motivo = f"{(linha.get('motivo') or '').strip()} (decisão manual {data})".strip()
+            aplicadas += 1
+    return aplicadas
+
+
+def decidir_entrega(fornecedor: Fornecedor) -> Fornecedor:
+    """Entrega em Goiás é critério de aprovação, não anotação.
+
+    Sede em GO atende GO por definição, e o frete não é calculado (regra
+    da SEAD-GO de 09/10/2026). Fornecedor de outro estado entra só se a
+    entrega em GO for confirmada.
+
+    Reprova só com prova: é preciso ter havido recusa. Timeout, bloqueio
+    e site fora do ar deixam a pergunta em aberto, e fornecedor não some
+    da lista por causa de uma tarde ruim de rede.
+    """
+    if sede_na_uf_da_pesquisa(fornecedor.uf):
+        fornecedor.entrega_centro = {UF_PESQUISA: True}
+        fornecedor.motivo = f"{fornecedor.motivo} | sede em {UF_PESQUISA}".strip(" |")
+        return fornecedor
+
     respostas = fornecedor.entrega_centro
 
     if any(respostas.values()):
@@ -673,23 +721,26 @@ def decidir_entrega(fornecedor: Fornecedor) -> Fornecedor:
     fornecedor.status = Status.PENDENTE
     faltam = [uf for uf in UFS_CENTRO if uf not in respostas]
     fornecedor.motivo = (
-        f"entrega na Região Centro não confirmada (sem resposta para {', '.join(faltam)})"
+        f"entrega em {UF_PESQUISA} não confirmada (sem resposta para {', '.join(faltam)})"
     )
     return fornecedor
 
 
 def testar_entrega(fornecedor: Fornecedor, cliente: Cliente) -> Fornecedor:
-    """Confirma entrega em GO e DF e classifica o modo de frete.
+    """Confirma entrega em GO e classifica o modo de frete.
 
     É o passo mais lento da etapa, por isso vem por último, rodando só
-    sobre quem já passou no filtro de CNAE. Precisa de um produto de
-    exemplo da loja: sem produto não há CEP para simular.
+    sobre quem já passou no filtro de CNAE e tem sede fora de GO -- sede
+    em GO não calcula frete. Precisa de um produto de exemplo da loja:
+    sem produto não há CEP para simular.
     """
     from src.adapters.registro import criar
     from src.core.frete import classificar_site
 
     if fornecedor.status is not Status.APROVADO:
         return fornecedor
+    if sede_na_uf_da_pesquisa(fornecedor.uf):
+        return decidir_entrega(fornecedor)
 
     try:
         with criar(fornecedor, cliente) as executor:
@@ -795,11 +846,17 @@ def main(com_frete: bool = False, retomar: bool = True,
                 validar(f, cliente, buscar_cnpj_no_site=not so_com_cnpj)
                 if com_frete:
                     testar_entrega(f, cliente)
+                elif f.status is Status.APROVADO and sede_na_uf_da_pesquisa(f.uf):
+                    # Sede em GO não precisa de teste de frete: marca já.
+                    decidir_entrega(f)
             except Exception:
                 log.exception("%s quebrou na validacao", f.dominio)
                 f.status = Status.PENDENTE
                 f.motivo = "erro na validação; ver logs/execucao.log"
 
+    corrigidos = aplicar_correcoes(fornecedores)
+    if corrigidos:
+        print(f"{corrigidos} fornecedor(es) com decisão humana de {CORRECOES}")
     gravar_fornecedores(fornecedores, SAIDA)
 
     contagem = {s: sum(1 for f in fornecedores if f.status is s) for s in Status}

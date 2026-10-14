@@ -25,7 +25,7 @@ import random
 import time
 from collections import defaultdict
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -36,6 +36,7 @@ log = obter(__name__)
 CACHE_DIR = Path("data/raw/http_cache")
 TIMEOUT = 20.0
 MAX_TENTATIVAS = 3
+MAX_REDIRECIONAMENTOS = 5
 INTERVALO_MIN, INTERVALO_MAX = 1.0, 3.0
 
 # Validade padrão do cache, em segundos. 7 dias serve ao desenvolvimento
@@ -278,7 +279,7 @@ class Cliente:
         for tentativa in range(MAX_TENTATIVAS):
             self._esperar(dominio)
             try:
-                r = self._http.post(url, json=corpo, **kwargs)
+                r = self._post_seguindo(url, corpo, **kwargs)
                 if r.status_code in STATUS_BLOQUEIO:
                     log.warning("%s respondeu %s no POST %s", dominio, r.status_code, url)
                     raise SiteBloqueado(f"{dominio} barrou o POST {url}", url)
@@ -296,6 +297,24 @@ class Cliente:
                 time.sleep(2**tentativa)
 
         raise FalhaDeRede(f"POST falhou apos {MAX_TENTATIVAS} tentativas: {url}", url) from ultimo_erro
+
+    def _post_seguindo(self, url: str, corpo: dict, **kwargs) -> httpx.Response:
+        """POST que segue redirecionamento como POST.
+
+        O httpx segue 301 e 302 trocando o POST por GET, que é o que os
+        navegadores fazem -- e a simulação de frete chega lá sem corpo.
+        Uma loja VTEX real (lojabraslimpo) responde 301 do endereço sem
+        www para o com www: o GET da busca passava, e o frete dava erro
+        nas duas UFs.
+        """
+        for _ in range(MAX_REDIRECIONAMENTOS):
+            r = self._http.post(url, json=corpo, follow_redirects=False, **kwargs)
+            if not r.is_redirect:
+                return r
+            destino = urljoin(url, r.headers.get("location", ""))
+            log.info("POST %s redirecionado para %s", url, destino)
+            url = destino
+        return r
 
     def close(self) -> None:
         self._http.close()

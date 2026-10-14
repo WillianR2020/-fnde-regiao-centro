@@ -1,0 +1,9 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1001,casadosquimicos.com.br,https://www.casadosquimicos.com.br/alcool-etilico-hidratado-96°-5-litros-151389,Álcool Etílico Hidratado 96° 5 Litros,0.72,80.9,2026-10-13T14:49:01,revisar,concentracao pedida [46.2] e o produto traz [96.0],
+1002,casadosquimicos.com.br,https://www.casadosquimicos.com.br/alcool-etilico-hidratado-70-5-litros-151381,Álcool Etílico Hidratado 70% 5 Litros,0.753,64.9,2026-10-12T14:06:57,aceito,,
+1003,casadosquimicos.com.br,https://www.casadosquimicos.com.br/alcool-etilico-hidratado-70-5-litros-151381,Álcool Etílico Hidratado 70% 5 Litros,0.753,64.9,2026-10-10T23:20:37,aceito,,
+1004,casadosquimicos.com.br,https://www.casadosquimicos.com.br/alcool-etilico-hidratado-70-1-litro-151380,Álcool Etílico Hidratado 70% 1 Litro,0.723,16.9,2026-10-10T23:20:45,aceito,,
+1027,casadosquimicos.com.br,https://www.casadosquimicos.com.br/kit/kit-para-fazer-limpa-vidros-e-multiuso-rende-at-10-l--1074,Kit para Fazer Limpa-Vidros e Multiuso (rende até 10 L),0.516,109.7,2026-10-10T23:27:03,revisar,volume pedida [5.0] e o produto traz [10.0],
+1040,casadosquimicos.com.br,https://www.casadosquimicos.com.br/base-para-detergente-e-sabao-liquido-5-litros-151429,Base para Detergente e Sabão Líquido 5 Litros,0.653,337.9,2026-10-12T14:18:01,aceito,,
+1041,casadosquimicos.com.br,https://www.casadosquimicos.com.br/kit/kit-para-fazer-sabonete-l-quido-rende-at-5-l--1076,Kit para Fazer Sabonete Líquido (rende até 5 L),0.92,165.4,2026-10-10T23:30:39,aceito,,
+1055,casadosquimicos.com.br,https://www.casadosquimicos.com.br/soda-caustica-escamas-99-hidroxido-de-sodio-1-kg-150179,Soda Cáustica Escamas 99% (Hidróxido de Sódio) 1 Kg,0.72,18.9,2026-10-12T14:21:38,revisar,concentracao pedida [96.0] e o produto traz [99.0],

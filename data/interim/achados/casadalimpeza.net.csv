@@ -1,0 +1,15 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1001,casadalimpeza.net,https://casadalimpeza.net/produto/sabao-liquido-para-roupas-deoline-5-litros/,Sabão líquido para roupas Deoline 5 litros,0.587,62.0,2026-10-13T14:47:51,revisar,,1743
+1002,casadalimpeza.net,https://casadalimpeza.net/produto/sabao-liquido-para-roupas-deoline-5-litros/,Sabão líquido para roupas Deoline 5 litros,0.563,62.0,2026-10-12T14:06:30,revisar,,1743
+1008,casadalimpeza.net,https://casadalimpeza.net/produto/cera-acrilica-start-master-5l/,Cera acrílica Start Master 5L,0.495,205.0,2026-10-12T14:06:59,revisar,volume pedida [1.0] e o produto traz [5.0],1824
+1014,casadalimpeza.net,https://casadalimpeza.net/produto/klyo-pine-detergente-desengraxante-5l/,Klyo pine detergente desengraxante 5L,0.92,149.0,2026-10-10T22:58:13,aceito,,1738
+1016,casadalimpeza.net,https://casadalimpeza.net/produto/detergente-em-po-cif-limpeza-pesada-24kg/,"Detergente em pó Cif limpeza pesada 2,4KG",0.514,29.9,2026-10-12T14:07:23,revisar,,1769
+1021,casadalimpeza.net,https://casadalimpeza.net/produto/fibra-verde-3m/,Fibra Verde 3M,0.704,5.9,2026-10-12T14:07:48,revisar,item exige [10] peças e o título do produto não diz quantas vêm,1285
+1026,casadalimpeza.net,https://casadalimpeza.net/produto/klyo-oxy-limpador-de-uso-geral-5l/,Klyo oxy limpador de uso geral 5L,0.511,69.0,2026-10-12T14:08:02,revisar,,1741
+1028,casadalimpeza.net,https://casadalimpeza.net/produto/chef-lima-limao-limpador-multiuso/,Chef Lima limão limpador multiuso,0.72,77.9,2026-10-10T22:59:12,aceito,,1806
+1034,casadalimpeza.net,https://casadalimpeza.net/produto/papel-higienico-elegans-duo-8x250-mt-642-folha-dupla-1414g/,Papel Higiênico Milli Elegans Duo 8×250 mt 647 folha dupla 14+14g,0.72,132.9,2026-10-12T14:08:24,aceito,,1543
+1036,casadalimpeza.net,https://casadalimpeza.net/produto/papel-toalha-casa-da-limpeza-2000-folhas/,Papel Toalha Casa da Limpeza 2000 folhas,0.543,33.5,2026-10-12T14:08:34,revisar,item exige [1000] peças e o título do produto não diz quantas vêm,1422
+1037,casadalimpeza.net,https://casadalimpeza.net/produto/atiwax-removedor-de-ceras-renko/,Atiwax removedor de ceras Renko,0.72,295.0,2026-10-12T14:08:34,aceito,,1838
+1040,casadalimpeza.net,https://casadalimpeza.net/produto/sabao-liquido-para-roupas-deoline-5-litros/,Sabão líquido para roupas Deoline 5 litros,0.662,62.0,2026-10-12T14:08:47,aceito,,1743
+1051,casadalimpeza.net,https://casadalimpeza.net/produto/selador-start-master-5l/,Selador Start Master 5L,0.573,199.0,2026-10-12T14:09:08,revisar,,1827
+1093,casadalimpeza.net,https://casadalimpeza.net/produto/rodo-eco-40cm-c-cabo-14mts/,"Rodo Eco 40cm c/cabo 1,4mts",0.657,38.4,2026-10-10T22:56:34,aceito,,1756

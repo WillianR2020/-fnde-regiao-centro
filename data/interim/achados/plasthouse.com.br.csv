@@ -1,0 +1,16 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1027,plasthouse.com.br,https://plasthouse.com.br/produto/casa/limpeza/rodo-limpa-vidros-com-dispenser-bettanin/,Rodo Limpa Vidros Com Dispenser 225ml – Bettanin,0.488,29.9,2026-10-11T07:49:53,revisar,volume pedida [5.0] e o produto traz [0.225],RODBETLIM
+1056,plasthouse.com.br,https://plasthouse.com.br/produto/casa/organizacao/rolo-plastico-bolha-mini/,Plástico Bolha Light,0.553,29.5,2026-10-12T16:06:19,revisar,,PLASBOLIGHT
+1057,plasthouse.com.br,https://plasthouse.com.br/produto/casa/organizacao/rolo-plastico-bolha-mini/,Plástico Bolha Light,0.537,29.5,2026-10-12T16:06:21,revisar,,PLASBOLIGHT
+1060,plasthouse.com.br,https://plasthouse.com.br/produto/casa/organizacao/caixa-organizadora-20l-com-trava-plasticos-mb/,Caixa Organizadora 20L com Trava – Plásticos MB,0.716,29.97,2026-10-12T16:06:21,aceito,,ORGMBP20L
+1066,plasthouse.com.br,https://plasthouse.com.br/produto/casa/lavanderia/baldes/balde-8l-c-alca-plastica/,Balde 8L c/ Alça Plástica,0.688,7.9,2026-10-12T16:06:38,aceito,,BD8ALPLAS
+1067,plasthouse.com.br,https://plasthouse.com.br/produto/casa/cozinha/lixeira-20-litros-agata/,Lixeira 20 Litros Ágata,0.733,229.9,2026-10-12T16:06:39,aceito,,LIX20AGTA
+1075,plasthouse.com.br,https://plasthouse.com.br/produto/comercio/escadas/escada-aluminio-5-degraus-mor/,Escada de Alumínio 5 Degraus,0.624,182.5,2026-10-11T07:46:47,revisar,,CINMORESC
+1077,plasthouse.com.br,https://plasthouse.com.br/produto/casa/cozinha/outrios-itens-de-cozinha/lava-copos-com-escova/,Lava Copos Manual com Escova – MR Plasticos,0.72,35.9,2026-10-12T16:07:06,aceito,,LAVTOKCOZ
+1086,plasthouse.com.br,https://plasthouse.com.br/produto/casa/jardim/suporte-p-mangueira/,Suporte p/ Mangueira,0.514,22.9,2026-10-12T16:07:27,revisar,,SUPMANG
+1087,plasthouse.com.br,https://plasthouse.com.br/produto/casa/jardim/suporte-p-mangueira/,Suporte p/ Mangueira,0.514,22.9,2026-10-12T16:07:27,revisar,,SUPMANG
+1091,plasthouse.com.br,https://plasthouse.com.br/produto/comercio/sinalizadores/placa-sinalizadora/,Placa Sinalizadora,0.8,49.9,2026-10-12T16:07:29,aceito,,PLCSIN
+1092,plasthouse.com.br,https://plasthouse.com.br/produto/comercio/sinalizadores/placa-sinalizadora/,Placa Sinalizadora,0.8,49.9,2026-10-11T07:47:36,aceito,,PLCSIN
+1095,plasthouse.com.br,https://plasthouse.com.br/produto/casa/limpeza/rodo-limpa-vidros-com-dispenser-bettanin/,Rodo Limpa Vidros Com Dispenser 225ml – Bettanin,0.709,29.9,2026-10-12T16:07:31,aceito,,RODBETLIM
+1096,plasthouse.com.br,https://plasthouse.com.br/produto/casa/limpeza/rodo-limpa-vidros-com-dispenser-bettanin/,Rodo Limpa Vidros Com Dispenser 225ml – Bettanin,0.588,29.9,2026-10-12T16:07:36,revisar,,RODBETLIM
+1097,plasthouse.com.br,https://plasthouse.com.br/produto/lixeiras/cinzeiro-plastico-de-chao/,Cinzeiro Plástico de Chão,0.567,0.0,2026-10-12T16:07:40,revisar,,CINZCHAO

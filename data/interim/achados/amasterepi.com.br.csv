@@ -1,0 +1,11 @@
+id_item,dominio,url_produto,titulo_encontrado,score_match,preco_indicativo,coletado_em,classificacao,motivo_match,sku
+1002,amasterepi.com.br,https://www.amasterepi.com.br/21971/alcool-gel-70-5l-premisse,"Alcool Gel 70% 5L Premisse R$ 75,53 em até 1x de 79,50",0.547,75.53,2026-10-09T16:17:55,revisar,,
+1003,amasterepi.com.br,https://www.amasterepi.com.br/21971/alcool-gel-70-5l-premisse,"Alcool Gel 70% 5L Premisse R$ 75,53 em até 1x de 79,50",0.553,75.53,2026-10-09T16:18:06,revisar,,
+1004,amasterepi.com.br,https://www.amasterepi.com.br/21971/alcool-gel-70-5l-premisse,"Alcool Gel 70% 5L Premisse R$ 75,53 em até 1x de 79,50",0.553,75.53,2026-10-09T16:18:13,revisar,,
+1041,amasterepi.com.br,https://www.amasterepi.com.br/22247/sabonete-premisse-erva-doce-soft-5l,"Sabonete Premisse Erva Doce Soft 5L R$ 33,80 em até 1x de 35,58",0.515,33.8,2026-10-09T16:22:54,revisar,,
+1108,amasterepi.com.br,https://www.amasterepi.com.br/22/bota-de-pvc-cano-medio,"Bota de Pvc Cano Medio R$ 49,40 em até 1x de 52,00",0.72,49.4,2026-10-09T15:05:38,aceito,,
+1109,amasterepi.com.br,https://www.amasterepi.com.br/23125/luva-de-pvc-verde-36cm-aspera-sansafety-tam-9,"Luva de Pvc Verde 26Cm Aspera Sansafety R$ 12,35 em até 1x de 13,00",0.72,12.35,2026-10-09T15:05:45,aceito,,
+1111,amasterepi.com.br,https://www.amasterepi.com.br/21946/luva-de-latex-neoprene-bicolor-std-volk-p,"Luva de Latex Neoprene Bicolor Std Volk R$ 9,98 em até 1x de 10,50",0.72,9.98,2026-10-09T15:05:57,aceito,,
+1116,amasterepi.com.br,https://www.amasterepi.com.br/22564/avental-de-pvc-tira-sold-120m-bco-prevemax,"Avental de Pvc Tira Sold 1,20M Bco Prevemax R$ 12,35 em até 1x de 13,00",0.72,12.35,2026-10-09T15:06:33,aceito,,
+1117,amasterepi.com.br,https://www.amasterepi.com.br/19430/capa-de-chuva-pvc-cforro-stand,"Capa de Chuva Pvc C/Forro Stand R$ 17,10 em até 1x de 18,00",0.72,17.1,2026-10-09T15:06:38,aceito,,
+1118,amasterepi.com.br,https://www.amasterepi.com.br/19167/bone-arabe-azul-helanca-c-protecao-pescoco-prime,"Bone Arabe Azul Helanca C/ Protecao Pescoço Prime R$ 11,40 em até 1x de 12,00",0.72,11.4,2026-10-12T12:45:18,aceito,,

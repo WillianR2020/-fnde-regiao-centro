@@ -69,6 +69,15 @@ DIMENSOES: dict[str, tuple[str, float]] = {
     "quilo": ("massa", 1.0),
     "w": ("potencia", 1.0),
     "kw": ("potencia", 1000.0),
+    # Teor: álcool 54% e álcool 70% são itens diferentes da mesma lista
+    # (SEAD-GO 1001 e 1002), com o mesmo nome e o mesmo galão de 5 L.
+    "%": ("concentracao", 1.0),
+    "deg": ("concentracao", 1.0),  # "96°" depois do unidecode
+    "gl": ("concentracao", 1.0),
+    "inpm": ("concentracao", 1.0),
+    # Escada de 3 degraus era aceita no item de 12 (SEAD-GO 1074): o
+    # nome e o material batiam, e degrau não era medida.
+    "degrau": ("degraus", 1.0),
 }
 
 # Ordem importa: as maiores primeiro, senão "mm" é lido como "m".
@@ -136,13 +145,28 @@ def _texto_medidas(texto: str) -> str:
     com 20" (vinte peças). O conectivo é o que separa os dois casos, e
     por isso ele precisa sobreviver até a extração.
     """
-    t = unidecode(texto or "").lower()
-    return re.sub(r"[^a-z0-9,./\"\s]", " ", t)
+    # "70º" (ordinal) e "70°" (grau) chegam misturados nos títulos;
+    # o unidecode lê o primeiro como "o" e o segundo como "deg".
+    t = unidecode((texto or "").replace("º", "°")).lower()
+    return re.sub(r"[^a-z0-9,./\"%\s]", " ", t)
 
 
 # ---------------------------------------------------------------------------
 # Extração
 # ---------------------------------------------------------------------------
+
+# "1.600 W" e "1.000 ml": ponto de milhar, como a lista SEAD-GO escreve
+# (item 1082). Lido como decimal, o aspirador de 1600 W virava 1,6 W e
+# divergia de todo aspirador. "0.500" e "1.5" continuam decimais.
+RE_MILHAR = re.compile(r"[1-9]\d{0,2}(?:\.\d{3})+")
+
+
+def _numero(texto: str) -> float:
+    texto = texto.strip()
+    if RE_MILHAR.fullmatch(texto):
+        return float(texto.replace(".", ""))
+    return float(texto.replace(",", "."))
+
 
 def dimensoes(texto: str) -> set[tuple[str, float]]:
     """(família, valor na unidade canônica). 100 cm e 1 m dão o mesmo par."""
@@ -152,11 +176,11 @@ def dimensoes(texto: str) -> set[tuple[str, float]]:
     for cadeia, unidade in RE_CADEIA.findall(t):
         familia, fator = DIMENSOES[unidade]
         for numero in re.split(r"[x*]", cadeia):
-            achados.add((familia, float(numero.strip().replace(",", ".")) * fator))
+            achados.add((familia, _numero(numero) * fator))
 
     for valor, unidade in RE_DIMENSAO.findall(t):
         familia, fator = DIMENSOES[unidade]
-        achados.add((familia, float(valor.replace(",", ".")) * fator))
+        achados.add((familia, _numero(valor) * fator))
     return achados
 
 
@@ -225,16 +249,17 @@ def comparar_dimensoes(item: str, produto: str) -> tuple[str, str]:
     if not familias:
         return "ausente", ""
 
-    for familia in familias:
+    # Toda família que os dois lados citam tem que conferir. Bastar uma
+    # deixava "álcool 70% 5 L" passar por "álcool 54% 5 L": o volume
+    # batia e o teor nem era olhado.
+    for familia in sorted(familias):
         valores_item = [v for f, v in do_item if f == familia]
         valores_produto = [v for f, v in do_produto if f == familia]
-        if any(_mesmo_valor(a, b) for a in valores_item for b in valores_produto):
-            return "bate", f"{familia} confere"
+        if not any(_mesmo_valor(a, b) for a in valores_item for b in valores_produto):
+            return "diverge", (f"{familia} pedida {sorted(valores_item)} "
+                               f"e o produto traz {sorted(valores_produto)}")
 
-    familia = sorted(familias)[0]
-    pedido = sorted(v for f, v in do_item if f == familia)
-    oferta = sorted(v for f, v in do_produto if f == familia)
-    return "diverge", f"{familia} pedida {pedido} e o produto traz {oferta}"
+    return "bate", f"{', '.join(sorted(familias))} confere"
 
 
 def comparar_embalagem(item: str, produto: str) -> tuple[str, str]:
@@ -305,9 +330,110 @@ def pontuar(descricao_item: str, titulo_produto: str) -> float:
     return avaliar(descricao_item, titulo_produto).score
 
 
+# Nota de quem traz no título o nome inteiro do item: acima do aceite,
+# abaixo de um texto idêntico. Ver nome_do_item().
+SCORE_NOME_DO_ITEM = 90.0
+
+# Palavra do nome do item que as lojas escrevem de outro jeito. Sem isso,
+# "Botina de Segurança Antiderrapante" ficava em 49 para "CALÇADO DE
+# SEGURANÇA ANTIDERRAPANTE" e nem chegava à revisão. A vassoura de
+# "cerdas duras" é a de piaçava.
+SINONIMOS_DO_NOME = {
+    "calcado": {"botina", "bota", "sapato", "tenis", "coturno"},
+    "cerdas": {"piacava", "palha"},
+    "duras": {"piacava"},
+    "desodorizador": {"pedra", "bloco", "odorizador"},
+    "limpador": {"limpa"},
+    "perfumada": {"desodorizadora", "odorizadora", "aromatizada"},
+    "sinalizadora": {"sinalizacao", "interditado"},
+    "plastica": {"plastico"},
+}
+
+
+def nome_do_item(descricao: str) -> list[set[str]]:
+    """O nome do produto na descrição "NOME - DETALHES; USO" da SEAD-GO.
+
+    Cada posição é um conjunto de alternativas: "BOTA DE PVC/BORRACHA"
+    -> [{bota}, {pvc, borracha}]. Números ficam de fora (medida tem
+    regra própria). Lista vazia quando não há separador, ou quando o
+    nome tem uma palavra só ("MEIA" casaria com "meia luva") ou mais
+    de cinco (aí não é nome, é descrição).
+
+    Existe porque o fuzzy da descrição inteira pune o produto certo: em
+    "LUVA DE PVC - CANO MÉDIO OU LONGO; PARA ATIVIDADES DE LIMPEZA" o
+    uso pesa tanto quanto o nome, e "Luva PVC Cano Longo 46cm" ficava em
+    77 -- revisão, fora da coleta. Na varredura de EPI de 09/10/2026,
+    34 sites deram 0 pares aceitos.
+    """
+    texto = str(descricao or "")
+    cabeca = re.split(r"\s-\s|\s[–—]\s|;|,", texto)[0]
+    if cabeca.strip() == texto.strip():
+        return []
+    # A finalidade não é nome: "BONÉ ÁRABE/SOMBREIRO PARA PROTEÇÃO SOLAR".
+    cabeca = re.split(r"\spara\s", cabeca, flags=re.IGNORECASE)[0]
+    grupos: list[set[str]] = []
+    for pedaco in unidecode(cabeca).lower().split():
+        alternativas = {
+            a for a in re.sub(r"[^a-z0-9/]", "", pedaco).split("/")
+            if a and a not in STOPWORDS and a != "ou" and not a[0].isdigit()
+        }
+        for a in list(alternativas):
+            alternativas |= SINONIMOS_DO_NOME.get(a, set())
+        if alternativas:
+            grupos.append(alternativas)
+    return grupos if 2 <= len(grupos) <= 5 else []
+
+
+def _tem_o_nome(grupos: list[set[str]], titulo: str) -> bool:
+    palavras = normalizar(titulo).split()
+
+    def presente(alternativa: str) -> bool:
+        # "luvas" e "oculos" contam como "luva" e "oculos"; prefixo só
+        # para palavra de 4+ letras, senão "pvc" casaria com "pvca".
+        return any(p == alternativa or (len(alternativa) >= 4 and p.startswith(alternativa))
+                   for p in palavras)
+
+    return all(any(presente(a) for a in grupo) for grupo in grupos)
+
+
+# Produto que é acessório DO item, não o item: "Dispenser para Papel
+# Higiênico Rolão" para o papel rolão (1035), "Porta Sabão em Pó" para o
+# sabão (1039), "Kit Lava Jato Avental, Óculos, Luva e Bota" para o
+# avental (1116). O título traz o nome inteiro do item e o fuzzy dava
+# 100. Só vale quando a primeira palavra do título é a do acessório e o
+# item não a usa ("DISPENSADOR PARA PAPEL TOALHA" pede mesmo o dispenser).
+ACESSORIOS = {
+    "dispenser": {"dispenser", "dispensador", "dosador"},
+    "dispensador": {"dispenser", "dispensador", "dosador"},
+    "porta": {"porta"},
+    "suporte": {"suporte"},
+    "refil": {"refil"},
+    "kit": {"kit", "conjunto", "completo"},
+    "capa": {"capa"},
+    "reservatorio": {"reservatorio"},
+}
+
+
+def acessorio_do_item(descricao_item: str, titulo_produto: str) -> str:
+    """A palavra de acessório que abre o título e que o item não pede, ou ""."""
+    palavras = re.findall(r"[a-z]+", unidecode(str(titulo_produto or "")).lower())
+    if not palavras or palavras[0] not in ACESSORIOS:
+        return ""
+    item = set(re.findall(r"[a-z]+", unidecode(str(descricao_item or "")).lower()))
+    return "" if item & ACESSORIOS[palavras[0]] else palavras[0]
+
+
 def avaliar(descricao_item: str, titulo_produto: str) -> Avaliacao:
     """Score + decisão. Use esta função, não `pontuar` sozinha."""
     base = fuzz.token_set_ratio(normalizar(descricao_item), normalizar(titulo_produto))
+    acessorio = acessorio_do_item(descricao_item, titulo_produto)
+    if acessorio:
+        return Avaliacao(base, "descartado",
+                         [f"'{acessorio}' é acessório, o item não pede {acessorio}"],
+                         "ausente", "irrelevante")
+    grupos = nome_do_item(descricao_item)
+    if grupos and _tem_o_nome(grupos, titulo_produto):
+        base = max(base, SCORE_NOME_DO_ITEM)
     motivos: list[str] = []
     teto: str | None = None
 
@@ -393,6 +519,7 @@ def _legivel(familia: str, valor: float) -> str:
         "volume": ((1.0, "l"), (0.001, "ml")),
         "massa": ((1.0, "kg"), (0.001, "g")),
         "potencia": ((1000.0, "kw"), (1.0, "w")),
+        "degraus": ((1.0, "degraus"),),
     }
     for fator, sufixo in escalas.get(familia, ((1.0, ""),)):
         if valor >= fator:
